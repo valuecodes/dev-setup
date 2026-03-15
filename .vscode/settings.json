@@ -1,0 +1,43 @@
+{
+  "terminal.integrated.profiles.linux": {
+    "Git SSH": {
+      "overrideName": true,
+      "path": "/bin/bash",
+      "color": "terminal.ansiGreen",
+      "icon": "git-branch",
+      "args": ["-ic", "ssh-login; exec bash"]
+    },
+    "Dev": {
+      "overrideName": true,
+      "path": "/bin/bash",
+      "color": "terminal.ansiBlue",
+      "icon": "terminal"
+    },
+    "AI Agents": {
+      "overrideName": true,
+      "path": "/bin/bash",
+      "color": "terminal.ansiRed",
+      "icon": "robot"
+    },
+    "Tooling": {
+      "overrideName": true,
+      "path": "/bin/bash",
+      "color": "terminal.ansiYellow",
+      "icon": "gear"
+    }
+  },
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "file": ".github/commit-message-instructions.md"
+    }
+  ],
+  "github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
+    {
+      "file": ".github/pull-request-description-instructions.md"
+    }
+  ],
+  "github.copilot.enable": {
+    "*": true,
+    "dotenv": false
+  }
+}
