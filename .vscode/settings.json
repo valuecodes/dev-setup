@@ -5,7 +5,7 @@
       "path": "/bin/bash",
       "color": "terminal.ansiGreen",
       "icon": "git-branch",
-      "args": ["-ic", "ssh-login; exec bash"]
+      "args": ["-ic", "git-login; exec bash"]
     },
     "Dev": {
       "overrideName": true,
