@@ -28,12 +28,12 @@
   },
   "github.copilot.chat.commitMessageGeneration.instructions": [
     {
-      "file": ".github/commit-message-instructions.md"
+      "text": "Use Semantic Commit Messages format exactly: `<type>: <subject>`.\n\nAllowed types: chore, docs, feat, fix, refactor, style, test.\n\nSubject rules:\n- Present tense, start with a verb\n- Keep it concise (<= 72 chars)\n- No trailing period\n\nBody (if needed): Keep it short: 1-3 bullet points describing what changed, no extra fluff."
     }
   ],
   "github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
     {
-      "file": ".github/pull-request-description-instructions.md"
+      "text": "Generate a PR title and description from the diff for this repository.\n\nPR Title: Use Semantic Commit Messages format exactly: `<type>: <subject>`.\nAllowed types: chore, docs, feat, fix, refactor, style, test.\nSubject rules:\n- Present tense, start with a verb\n- Keep it concise (<= 72 chars)\n- No trailing period\n- Mention the area touched when helpful (cli, tests, tooling, config, docs)\n\nExamples:\n- `feat: add argument parsing to cli`\n- `test: cover main output`\n- `chore: align eslint config`\n\nPR Description (Required Sections):\n\n## What\n- Start with a 3–5 sentence description (plain text, no bullets)\n- Then add optional bullet points describing what changed and why\n- Call out affected areas like `src/`, tests, or config files when relevant\n- If CLI behavior/output changes, note the change and any new flags or args\n\n## How to test\nProvide concrete, reproducible steps using repo scripts, such as:\n- `pnpm test`\n- `pnpm lint`\n- `pnpm typecheck`\n- `pnpm start` (when CLI behavior is part of the change)\nInclude expected results (what \"good\" looks like). If you did not run something, say so and list what should be run.\n\n## Security review\nAlways include a short checklist-style review:\n- **Secrets / env vars:** <changed | not changed>. (Never add real secrets to the repo.)\n- **Auth / session:** <changed | not changed>.\n- **Network / API calls:** <changed | not changed>. (New external calls, endpoints, telemetry.)\n- **Data handling / PII:** <changed | not changed>. (Logging, storage, user-provided data.)\n- **Dependencies:** <added/updated | not changed>. (Call out any new deps and why; prefer minimal deps.)\n\nIf no impact, write exactly: `No security-impacting changes identified.` Then add 1-2 bullets justifying.\n\nTone: Keep it concise and high-signal. Use bullet points. Do not invent scripts/commands/files that are not in the repo."
     }
   ],
   "github.copilot.enable": {
