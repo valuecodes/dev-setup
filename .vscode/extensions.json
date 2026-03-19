@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "anthropic.claude-code",
+    "bradlc.vscode-tailwindcss",
+    "bruno-api-client.bruno",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "github.copilot-chat",
+    "github.vscode-pull-request-github",
+    "openai.chatgpt"
+  ]
+}
