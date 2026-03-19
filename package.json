@@ -4,5 +4,12 @@
   "description": "Personal development environment configuration and tooling",
   "author": "Juha Kangas",
   "license": "ISC",
-  "private": true
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "prettier": "3.8.1"
+  }
 }
