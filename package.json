@@ -14,9 +14,12 @@
   "scripts": {
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "secrets:scan": "sh scripts/secrets-scan.sh"
+    "secrets:scan": "sh scripts/secrets-scan.sh",
+    "typecheck": "tsc"
   },
   "devDependencies": {
-    "oxfmt": "0.71.0"
+    "@types/node": "24.13.6",
+    "oxfmt": "0.71.0",
+    "typescript": "7.0.2"
   }
 }

@@ -1,0 +1,11 @@
+# 14 days, in minutes: a new release is not resolvable until it is this old.
+# So `pnpm up --latest` deliberately skips fresh releases; use
+# `minimumReleaseAgeExclude` if one package must move faster.
+minimumReleaseAge: 20160
+
+# Fails when a version has weaker trust evidence (provenance, trusted
+# publishing) than an earlier one, the usual sign of a hijacked account.
+# Also re-checked on `--frozen-lockfile` installs. If a downgrade is
+# legitimate, exclude that exact version in `trustPolicyExclude` with a reason,
+# never a bare package name.
+trustPolicy: no-downgrade

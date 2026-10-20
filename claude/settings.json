@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ~/.claude/hooks/allow-worktree-commands.mjs"
+            "command": "node ~/.claude/hooks/allow-worktree-commands.ts"
           }
         ]
       }
