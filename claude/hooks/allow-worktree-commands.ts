@@ -34,9 +34,11 @@ const GIT_COMMIT = new RegExp(
 let input = "";
 for await (const chunk of process.stdin) input += chunk;
 
-let command;
+type HookInput = { tool_input?: { command?: unknown } } | null;
+
+let command: unknown;
 try {
-  command = JSON.parse(input)?.tool_input?.command;
+  command = (JSON.parse(input) as HookInput)?.tool_input?.command;
 } catch {
   process.exit(0);
 }
@@ -46,7 +48,7 @@ const cmd = command.trim();
 const tokens = cmd.split(" ");
 if (cmd.split(/[\s/]/).includes("..")) process.exit(0);
 
-let reason;
+let reason: string;
 if (PNPM.test(cmd)) {
   reason = "pnpm script in a .worktrees/ checkout";
 } else if (GIT.test(cmd) && !tokens.some((t) => GIT_BLOCKED.test(t))) {

@@ -125,7 +125,7 @@ Then list, on separate lines:
 - Held alert numbers and why (`no patched version`).
 - The validation result (which script passed/failed).
 
-Stop. Leave the working tree dirty for me to commit manually (or via `/commit`).
+Stop. Leave the working tree dirty for me to commit manually.
 
 ## Hard rules
 

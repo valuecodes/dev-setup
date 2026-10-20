@@ -101,7 +101,7 @@ Print:
 - The exact list of packages that were upgraded, with `old → new` versions.
 - If validation failed, the failing script name. Do NOT try to "fix" the failure in this command — that's a separate task.
 
-Do NOT commit. Do NOT push. Leave the working tree dirty for me to review and commit manually (or via `/commit`).
+Do NOT commit. Do NOT push. Leave the working tree dirty for me to review and commit manually.
 
 ## Hard rules
 

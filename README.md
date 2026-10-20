@@ -45,9 +45,9 @@ Open this repository in VS Code to use the workspace settings in `.vscode/`.
 
 `claude/` holds the global Claude Code config that normally lives in `~/.claude`:
 
-- `commands/` — slash commands (`/commit`, `/pr-open`, `/ship-feature`, …)
+- `commands/` — slash commands (`/ship-feature`, `/ship-plan`, `/ship-issue`, …)
 - `settings.json` — model, permission allowlist, hooks and plugins
-- `hooks/allow-worktree-commands.mjs` — PreToolUse hook used by `settings.json`
+- `hooks/allow-worktree-commands.ts` — PreToolUse hook used by `settings.json`; Node runs it directly by stripping the types
 
 Link them into `~/.claude` from your clone path (back up existing files first):
 
@@ -95,6 +95,12 @@ pnpm format:check
 ```
 
 `claude/` is left out of formatting, so the live config stays byte-identical.
+
+Type-check the hooks:
+
+```bash
+pnpm typecheck
+```
 
 Scan the git history for committed secrets (needs gitleaks v8.19+ or Docker):
 

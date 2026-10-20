@@ -9,7 +9,7 @@ Drive a feature from idea to addressed-PR in one run: take the spec → isolate 
 
 **Intended workflow:** the user plans normally in this chat (plan mode), gets a plan, *then* runs `/ship-feature` to execute it. So the spec comes from the plan already in this conversation — see Phase 1. Any text passed as arguments (`$ARGUMENTS`) is only a fallback description for ad-hoc features when there's no plan.
 
-This command *owns* the commits and pushes (unlike `/review-and-fix`, `/pr-open`, `/pr-address`, which never commit/push). It runs **fully automatically from spec through build** — auto-committing locally (the worktree branch is isolated, reversible, and unpushed) — and **gates only the three actions that leave the machine**: push + open PR (Gate C), the PR-feedback push (Gate D), and posting replies (Gate E). Never pass one of those gates without an affirmative `AskUserQuestion` answer.
+This command *owns* the commits and pushes. It runs **fully automatically from spec through build** — auto-committing locally (the worktree branch is isolated, reversible, and unpushed) — and **gates only the three actions that leave the machine**: push + open PR (Gate C), the PR-feedback push (Gate D), and posting replies (Gate E). Never pass one of those gates without an affirmative `AskUserQuestion` answer.
 
 **Visibility without editor windows.** This command does **not** open VS Code windows. It cannot close them either: the `code` remote CLI has no close command, and WSL cannot reach the Windows-side window manager. So do not try. Instead, after the first green commit it restarts the web dev server on `http://localhost:3000/` from the worktree (Phase 4a), killing the previous one, so localhost always shows the latest build. The Gate C diff is the other place to see the work.
 
@@ -108,7 +108,7 @@ Implement per the agreed plan. Follow repo standards from `AGENTS.md`: TS strict
 1. Make the first commit green — run in order, fix failures and re-run that gate until it passes:
    `pnpm typecheck` → `pnpm lint` → `pnpm knip` → `pnpm test` → `pnpm format:check` (fix with `pnpm format`) → `pnpm build`. If a gate genuinely can't pass (pre-existing unrelated failure / needs a product decision), stop looping and report it instead of disabling the check.
 2. Stage everything (`git add -A`), then show the **full** preview including untracked files: `git diff --cached` + `git status` (plain `git diff` omits new files).
-3. Propose a semantic commit message `<type>: <subject>` (mirroring `/commit`: `feat`/`fix`/`docs`/`style`/`refactor`/`test`/`chore`, no scope, imperative, ≤72 chars).
+3. Propose a semantic commit message `<type>: <subject>` (`feat`/`fix`/`docs`/`style`/`refactor`/`test`/`chore`, no scope, imperative, ≤72 chars).
 
 **Commit (no gate).** Commit automatically — the diff above is informational only; this is a local, unpushed commit on the isolated worktree branch and is reviewable in full at Gate C: `git commit -m "<msg>"` (already staged; prepend `-c commit.gpgsign=false` if Phase 0 set `SIGN=off`). Never `--no-verify`.
 
@@ -128,7 +128,7 @@ This is best effort. Never fail or pause the ship over the dev server. On any pr
 
 ## Phase 5 — Review: self + Codex (auto)
 
-**Self review** (mirrors `/review-and-fix`): deep pass over the branch diff `git diff <base_sha>...HEAD`, reading enough context to judge correctness — not hunks in isolation. Cover: correctness/logic bugs; security (injection, secrets, authz/authn, unsafe input, SSRF, path traversal, unsafe deserialization, XSS); error handling & edge cases (nulls, empty arrays, unhandled rejections, missing `await`); concurrency/resource (races, leaks, unbounded work); type-safety holes (`any`, unsafe casts, non-null assertions); obvious perf regressions. You MAY fan out parallel `Task` subagents (e.g. security + correctness). Produce a numbered findings list: `file:line`, severity, one-line description.
+**Self review**: deep pass over the branch diff `git diff <base_sha>...HEAD`, reading enough context to judge correctness — not hunks in isolation. Cover: correctness/logic bugs; security (injection, secrets, authz/authn, unsafe input, SSRF, path traversal, unsafe deserialization, XSS); error handling & edge cases (nulls, empty arrays, unhandled rejections, missing `await`); concurrency/resource (races, leaks, unbounded work); type-safety holes (`any`, unsafe casts, non-null assertions); obvious perf regressions. You MAY fan out parallel `Task` subagents (e.g. security + correctness). Produce a numbered findings list: `file:line`, severity, one-line description.
 
 **Codex review** — independent second opinion, run explicitly against the worktree + branch diff. Run it in **two steps** — never embed a `$(…)` command substitution in the `node` line, since Claude Code forces a permission prompt for any command containing `$(…)` regardless of the allowlist:
 
@@ -150,7 +150,7 @@ This is best effort. Never fail or pause the ship over the dev server. On any pr
 
 ## Phase 7 — Push + open PR (Gate C)
 
-1. Pre-flight (mirrors `/pr-open`): current branch is not the base; `gh pr view --json url,state` shows no existing PR for `feat/<slug>` (if one exists, print its URL and skip to Phase 8).
+1. Pre-flight: current branch is not the base; `gh pr view --json url,state` shows no existing PR for `feat/<slug>` (if one exists, print its URL and skip to Phase 8).
 2. Generate, from `git diff <base_sha>...HEAD` and `git log <base_sha>..HEAD --oneline`:
    - **Title**: plain-English sentence, capitalized, present tense, ≤72 chars, no trailing period (NOT `<type>: <subject>`).
    - **Body**: `### What` (2–4 bullets, lead with the why), `### How to test` (commands one per line, only scripts that exist in `package.json`), `### Security review` (single line `No security-impacting changes.` unless an item is actually affected, then the checklist).
@@ -173,14 +173,30 @@ Use `--body-file` (not `--body "$(cat …)"`) — a `$(…)` command substitutio
 
 ## Phase 9 — Address PR feedback (Gates D + E)
 
-Mirror `/pr-address`. **Paginate every fetch** — never assume one page is enough.
+**Paginate every fetch** — never assume one page is enough.
 
 1. Fetch (skip comments authored by your own login). Get that login by running `gh api user --jq .login` as its **own standalone command** and capturing the value — never inline it as `$(gh api user …)`, which forces a permission prompt. Then:
    - `gh api --paginate repos/<owner>/<repo>/issues/<PR>/comments`
    - `gh api --paginate repos/<owner>/<repo>/pulls/<PR>/comments`
    - `gh api --paginate repos/<owner>/<repo>/pulls/<PR>/reviews`
    - Checks: `gh pr checks <PR>` (exit 8 = "not all complete", parse anyway); for each `failure`, `gh run view <runId> --log-failed | tail -60`.
-2. Triage each comment + failed check into **valid** / **question** / **noise** / **approved** / **ci-failure**. Show the table + a fix plan for `valid`/`ci-failure` rows (mirroring `/pr-address` §3).
+2. Triage. First print a one-line check summary: `Checks: <N> ✓ · <N> ✗ · <N> ⏳`. Then classify each comment AND each failed check:
+   - **valid** — concrete claim or actionable suggestion grounded in the diff. Will be fixed. Replies posted.
+   - **question** — clarifying question; no code change, but reply needed.
+   - **noise** — bot welcome / "review enabled" / auto-generated PR overview / "show summary per file" / known-flaky CI failure. No fix, no reply by default.
+   - **approved** — APPROVED review with no concrete request. Acknowledge with `👍 thanks`, no fix.
+   - **ci-failure** — a failed Action / check that points at a real problem in the diff (test/typecheck/lint/format). Will be fixed. NO reply (CI re-runs after push). Use the check name as `AUTHOR`, the failed-job URL as the `id`, and a one-line root cause (from the failed log tail) as the summary.
+
+   Show one table:
+   ```
+   ID           AUTHOR                FILE:LINE                  CLASS         ONE-LINE SUMMARY
+   <id>         <user | check-name>   <path:line | -->           <class>       <≤ 90 chars>
+   ```
+   Then a fix plan for every `valid` / `ci-failure` row, grouping related fixes (same file or shared root cause) into one edit when natural:
+   ```
+   [id <id>]  <file>(:line)
+     → <one-line description of the change>
+   ```
 3. Apply fixes for valid + ci-failure (if any) in the worktree; re-run the quality gates until green.
 
 **Gate D** (only if there ARE code fixes). `AskUserQuestion` (`Commit + push the fixes?`): `Commit + push (Recommended)` / `Edit fixes` / `Cancel`. On affirmative → `git -C ".worktrees/<slug>" add -A`, commit (`fix: address PR review feedback`), `git -C ".worktrees/<slug>" push <https-url> HEAD:feat/<slug>`. Capture the new SHA (`git -C ".worktrees/<slug>" rev-parse HEAD`).
