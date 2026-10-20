@@ -1,0 +1,74 @@
+{
+  "model": "opus",
+  "permissions": {
+    "additionalDirectories": ["~/.cargo/registry"],
+    "allow": [
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm format:*)",
+      "Bash(pnpm format:check:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm secrets:scan:*)",
+      "Bash(pnpm knip:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(ls:*)",
+      "Bash(node \"/home/juha/.claude/plugins/cache/openai-codex/codex/1.0.4/scripts/codex-companion.mjs\" review:*)",
+      "Read(~/.claude/plugins/cache/openai-codex/**)",
+      "Read(~/.claude/commands/**)",
+      "Edit(.plans/**)",
+      "Bash(git rev-parse:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git worktree add .worktrees/*)",
+      "Bash(git worktree list:*)",
+      "Bash(cp -al *node_modules .worktrees/*node_modules)",
+      "Bash(cargo --version)",
+      "Bash(rustc --version)",
+      "Bash(cargo metadata:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(pkg-config:*)",
+      "Bash(which:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ~/.claude/hooks/allow-worktree-commands.mjs"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "codex@openai-codex": true
+  },
+  "extraKnownMarketplaces": {
+    "openai-codex": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/openai/codex-plugin-cc.git"
+      }
+    }
+  },
+  "effortLevel": "high",
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "high"
+    },
+    "claude-fable-5-1": {
+      "effortLevel": "medium"
+    }
+  },
+  "tui": "fullscreen"
+}
