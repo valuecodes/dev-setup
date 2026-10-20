@@ -8,7 +8,8 @@ Personal development environment configuration and tooling.
 - **VS Code workspace settings** — terminal profiles and Copilot configuration
 - **Copilot instructions** — semantic commit message and PR description guidance
 - **Extension recommendations** — suggested VS Code extensions for this setup
-- **Prettier config** — shared formatting settings with a repo-level format script
+- **oxfmt config** — formatting settings with repo-level format scripts
+- **Secrets scan** — a gitleaks scan of the repo's git history
 - **Claude Code config** — global slash commands, settings and hooks in `claude/`
 
 ## Setup
@@ -86,8 +87,19 @@ Commit with an inline message (no quotes needed):
 commit fix: update Content-Security-Policy to remove script hash
 ```
 
-Format the repo files:
+Format the repo files, or only check them:
 
 ```bash
 pnpm format
+pnpm format:check
 ```
+
+`claude/` is left out of formatting, so the live config stays byte-identical.
+
+Scan the git history for committed secrets (needs gitleaks v8.19+ or Docker):
+
+```bash
+pnpm secrets:scan
+```
+
+This is a manual check. It only sees committed history, not uncommitted files, and nothing runs it automatically.

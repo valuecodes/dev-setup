@@ -1,4 +1,0 @@
-pnpm-lock.yaml
-
-# Live Claude Code config, symlinked into ~/.claude — keep byte-identical
-claude/

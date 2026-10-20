@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  // Prettier's default; oxfmt's is 100.
+  "printWidth": 80,
+  "trailingComma": "es5",
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "pnpm-lock.yaml",
+    // Live Claude Code config, symlinked into ~/.claude — keep byte-identical
+    "claude/",
+  ],
+}
