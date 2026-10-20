@@ -1,1 +1,5 @@
 node_modules
+
+# Claude Code: local-only files that must never be committed
+claude/settings.local.json
+claude/.credentials.json
