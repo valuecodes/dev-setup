@@ -69,6 +69,8 @@ For each row, show the exact action:
 - **transitive**: add to root `package.json` `pnpm.overrides`: `"<pkg>": ">=<patched>"`. After all override edits are queued, run `pnpm install` once.
 - **no-fix**: skipped, listed separately under "Held — no patched version available".
 
+**Release-age check.** If `pnpm-workspace.yaml` sets `minimumReleaseAge`, check each target's publish time (`pnpm view <pkg>@<patched> time --json`). When the patched version is younger than the policy, pnpm will refuse it. For that row, plan an exact-version entry `"<pkg>@<patched>"` in `minimumReleaseAgeExclude`, with a comment naming the alert number, and install exactly `<patched>` (not `^<patched>`, which could resolve to an even newer, unexcluded release). Never exclude a bare package name. Mark these rows `(release-age exclude)` in the plan so Gate 1 approves them explicitly.
+
 If every row is `no-fix`, say so and stop — nothing to apply.
 
 **GATE 1.** Call `AskUserQuestion` with the question `Apply this fix plan?` and these three options (in this exact order):
@@ -81,6 +83,7 @@ Do not edit anything before an affirmative answer.
 
 ## 7. Apply (only after Gate 1 = yes)
 
+0. For each `(release-age exclude)` row, first add its approved `minimumReleaseAgeExclude` entry to `pnpm-workspace.yaml` with the `Edit` tool.
 1. For each `direct` row, run the confirmed `pnpm --filter <workspace> up <pkg>@^<patched>` command. Show stdout/stderr; if pnpm errors, STOP — do not retry blindly.
 2. For all `transitive` rows together, edit root `package.json` to add a `pnpm.overrides` object (or extend an existing one) with each `"<pkg>": ">=<patched>"` entry. Use the `Edit` tool, preserving existing JSON structure and trailing newline.
 3. Run `pnpm install` once to apply overrides + sync the lockfile.
@@ -132,6 +135,6 @@ Stop. Leave the working tree dirty for me to commit manually.
 - Never edit `package.json` or run `pnpm install` / `pnpm up` before Gate 1 is confirmed.
 - Never include `no-fix` rows in the apply step, even if they share a package name with a fixable row.
 - Never commit. Never push. Never use `--no-verify`.
-- Never edit source code (anything outside `package.json` / `pnpm-lock.yaml`) to "fix" a breaking change. If validation fails after the bump, surface it and stop — that's a separate task.
+- Never edit source code (anything outside `package.json` / `pnpm-lock.yaml`, plus the approved `minimumReleaseAgeExclude` entries in `pnpm-workspace.yaml`) to "fix" a breaking change. If validation fails after the bump, surface it and stop — that's a separate task.
 - Never dismiss an alert via the API. This command only patches; dismissal is manual on GitHub.
 - Never widen scope: only the alerts surfaced in section 2 (after severity filter) are in play.
