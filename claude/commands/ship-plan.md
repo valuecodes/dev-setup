@@ -1,6 +1,6 @@
 ---
 description: Ship the next unshipped PR of a multi-PR plan file against main — whole-plan Codex review once, per-PR re-plan + Codex review, then the /ship-feature build/review/PR/feedback phases — and stop until it is merged
-argument-hint: '[path/to/plan.md] [--continue]'
+argument-hint: "[path/to/plan.md] [--continue]"
 disable-model-invocation: true
 allowed-tools: Read, Edit, Write, Glob, Grep, Task, TodoWrite, AskUserQuestion, Bash(git:*), Bash(gh:*), Bash(pnpm:*), Bash(node:*), Bash(ls:*), Bash(mkdir:*), Bash(sleep:*), Bash(cd:*), Bash(tail:*), Bash(head:*), Bash(grep:*), Bash(sed:*), Bash(sort:*), Bash(ssh-add:*), Bash(setsid:*), Bash(kill:*), Bash(fuser:*), Bash(ss:*), Bash(cat:*), Bash(readlink:*), Bash(cp:*)
 ---
@@ -69,6 +69,7 @@ Arguments: `$ARGUMENTS` — an optional plan path and an optional `--continue` f
    ```
 
    `status` ∈ `pending | planned | built | pushed | merged | closed`. If the file exists and names a **different** plan path than the one resolved in step 1, `AskUserQuestion` before overwriting it (`Switch state to the new plan?` / `Keep the recorded plan` / `Cancel`). If it does not exist, create it with every PR as `pending`.
+
 4. **Pre-flight.** Run `ship-feature.md` **Phase 0** verbatim (gh auth, HTTPS URL + owner/repo, non-interactive `git ls-remote`, Node vs `.nvmrc`, main-checkout WIP warning, base branch, signing fallback → `SIGN`). Its STOP conditions apply.
 
 ## Phase 1 — Reconcile state with git and GitHub
@@ -131,7 +132,7 @@ Later PR sections in these plans are deliberately sketches ("specified to the le
 
 Read `~/.claude/commands/ship-feature.md` and follow its **Phases 2–7 verbatim** (worktree from fresh remote `main` → build → first commit → self + Codex code review → fix commit → Gate C push + PR), using the spec file from Phase 3 as "the plan", with these overrides:
 
-- **Names come from the plan heading**: branch `feat/<slug>`, worktree `.worktrees/<slug>`. The collision rule still applies to *unexpected* existing branches, but a branch Phase 1 classified as `built` for this PR is **adopted**, never suffixed. For `built`, skip straight to ship-feature Phase 7.
+- **Names come from the plan heading**: branch `feat/<slug>`, worktree `.worktrees/<slug>`. The collision rule still applies to _unexpected_ existing branches, but a branch Phase 1 classified as `built` for this PR is **adopted**, never suffixed. For `built`, skip straight to ship-feature Phase 7.
 - **Unit folder** = `.plans/<plan-slug>/prs/<id>/`: ship-feature writes the PR body there as `pr-body.md` (Phase 7).
 - Base = `main` at the freshly fetched `FETCH_HEAD`; record `base <sha>` in the row's notes.
 - Update the state row at each milestone: `built` after the first commit, `pushed` + PR URL right after Gate C.

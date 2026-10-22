@@ -1,6 +1,6 @@
 ---
 description: Retrospective on a shipped epic, plan or session — gather retro notes, PR feedback and transcripts, then propose ranked improvements to the agent's environment (checks, reviewer rules, steering files, commands, permissions) and apply the ones you pick
-argument-hint: '[plan folder | epic number | session id]'
+argument-hint: "[plan folder | epic number | session id]"
 disable-model-invocation: true
 allowed-tools: Read, Edit, Write, Glob, Grep, Task, TodoWrite, AskUserQuestion, Bash(gh:*), Bash(git:*), Bash(ls:*), Bash(grep:*), Bash(head:*), Bash(tail:*), Bash(wc:*), Bash(sort:*), Bash(uniq:*), Bash(mkdir:*)
 ---
@@ -38,19 +38,19 @@ Seed `TodoWrite` with the sources below. Fan out with `Task` subagents (Explore)
 
 Go through each category; a category needs evidence from Phase 1 to produce a candidate. Upstream's seven, then two for this pipeline:
 
-| Category | Use when | Typical target |
-| --- | --- | --- |
-| **Navigation** | Finding a file or fact took long; hidden coupling between files | A pointer in `AGENTS.md`, or a doc it points to |
-| **Automated checks** | A mistake an automated check could have caught; a check that is missing from CI or silently broken | oxlint rule in `.oxlintrc.json`, knip config, CI job, test, clippy lint |
-| **Coding standards** | Review (self / Codex / Copilot) caught something the build should not have produced, or missed something | Mechanical → a deterministic check (row above), always the default. Judgement → a reviewer rule in `CODING_STANDARDS.md`, read by `ship-feature.md` Phase 5 |
-| **AGENTS.md size** | Steering that belongs in a check or reviewer rule instead | Move out of `AGENTS.md` |
-| **Tool economy** | Large or repeated tool output, expensive calls | Command instructions (`| tail`, narrower queries), scripts |
-| **No-ops** | Steering lines that change no behaviour | Delete them |
-| **Information access** | The agent lacked a log, state or service it needed | Dev-server log tee, read-only access, a command step |
-| **Plan quality** | Spec drift at re-plan; slices too big, wrongly ordered or blocked; a standing rule the epic lacked | `plan-to-issues.md` grilling branches or split rules |
-| **Command friction** | Permission prompts, gate loops, `$(…)` or shell shapes the allowlist misses, STOPs that a pre-flight could have caught earlier | `~/.claude/commands/*.md`, `.claude/settings.json`, `CLAUDE.local.md` |
+| Category               | Use when                                                                                                                       | Typical target                                                                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Navigation**         | Finding a file or fact took long; hidden coupling between files                                                                | A pointer in `AGENTS.md`, or a doc it points to                                                                                                             |
+| **Automated checks**   | A mistake an automated check could have caught; a check that is missing from CI or silently broken                             | oxlint rule in `.oxlintrc.json`, knip config, CI job, test, clippy lint                                                                                     |
+| **Coding standards**   | Review (self / Codex / Copilot) caught something the build should not have produced, or missed something                       | Mechanical → a deterministic check (row above), always the default. Judgement → a reviewer rule in `CODING_STANDARDS.md`, read by `ship-feature.md` Phase 5 |
+| **AGENTS.md size**     | Steering that belongs in a check or reviewer rule instead                                                                      | Move out of `AGENTS.md`                                                                                                                                     |
+| **Tool economy**       | Large or repeated tool output, expensive calls                                                                                 | Command instructions (`                                                                                                                                     | tail`, narrower queries), scripts |
+| **No-ops**             | Steering lines that change no behaviour                                                                                        | Delete them                                                                                                                                                 |
+| **Information access** | The agent lacked a log, state or service it needed                                                                             | Dev-server log tee, read-only access, a command step                                                                                                        |
+| **Plan quality**       | Spec drift at re-plan; slices too big, wrongly ordered or blocked; a standing rule the epic lacked                             | `plan-to-issues.md` grilling branches or split rules                                                                                                        |
+| **Command friction**   | Permission prompts, gate loops, `$(…)` or shell shapes the allowlist misses, STOPs that a pre-flight could have caught earlier | `~/.claude/commands/*.md`, `.claude/settings.json`, `CLAUDE.local.md`                                                                                       |
 
-**Implementation vs review.** The implementing agent has the most context pressure; the reviewer gets a diff. So standards are imposed at review (`ship-feature.md` Phase 5 and its Codex review), not added to `AGENTS.md`, which every implementer pays for. `AGENTS.md` stays sparse: navigation pointers and invariants. If no `CODING_STANDARDS.md` exists, the first judgement-rule candidate proposes creating it *and* wiring Phase 5 to read it and pass it to the Codex review; never create it otherwise.
+**Implementation vs review.** The implementing agent has the most context pressure; the reviewer gets a diff. So standards are imposed at review (`ship-feature.md` Phase 5 and its Codex review), not added to `AGENTS.md`, which every implementer pays for. `AGENTS.md` stays sparse: navigation pointers and invariants. If no `CODING_STANDARDS.md` exists, the first judgement-rule candidate proposes creating it _and_ wiring Phase 5 to read it and pass it to the Codex review; never create it otherwise.
 
 Each candidate, terse and imperative:
 

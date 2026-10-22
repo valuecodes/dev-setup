@@ -25,6 +25,7 @@ gh api repos/<owner>/<repo>/dependabot/alerts?state=open --paginate
 If the result is empty, say "No open Dependabot alerts." and stop.
 
 For each alert capture:
+
 - `number` (alert ID, used for the summary at the end)
 - `security_advisory.severity`
 - `security_advisory.summary`
@@ -124,6 +125,7 @@ Alerts: <total>  Fixed: <N>  Held (no-fix): <N>  Validation: <ok|failed>
 ```
 
 Then list, on separate lines:
+
 - Fixed alert numbers and the package(s) each one resolved.
 - Held alert numbers and why (`no patched version`).
 - The validation result (which script passed/failed).

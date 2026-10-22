@@ -1,6 +1,6 @@
 ---
 description: Grill the user into a plan split into PR-sized slices, Codex-review the plan once, then publish it to GitHub as one epic issue + one sub-issue per PR (labelled ready-for-agent) for /ship-issue to pick up
-argument-hint: '[feature description | path/to/plan.md]'
+argument-hint: "[feature description | path/to/plan.md]"
 disable-model-invocation: true
 allowed-tools: Read, Edit, Write, Glob, Grep, Task, TodoWrite, AskUserQuestion, Bash(git:*), Bash(gh:*), Bash(pnpm:*), Bash(node:*), Bash(ls:*), Bash(mkdir:*), Bash(cat:*), Bash(head:*), Bash(tail:*), Bash(grep:*), Bash(sed:*), Bash(sort:*), Bash(gitleaks:*), Bash(docker:*)
 ---
@@ -93,6 +93,7 @@ Issues on a public repo are world-readable the moment they exist, and this one i
 1. **Write the bodies** with the Write tool: `<folder>/epic.md`, and `<folder>/prs/<id>/issue.md` per PR (`<id>` from its `## PR <id> —` heading; `mkdir -p` each unit folder). Generate titles and bodies from the plan file **as it stands now**, after Phase 4 and after any decision made during its triage; if anything in the plan changes later (at the gate, for instance), regenerate the affected files before publishing. Titles are final once an issue exists: the publish step never retitles.
 
    Epic body:
+
    ```
    ## Goal
    <from Context>
@@ -114,6 +115,7 @@ Issues on a public repo are world-readable the moment they exist, and this one i
    `## PRs` is a plain list for humans, not a checklist: progress is tracked by the native sub-issues and the plan's milestone, and nothing ticks this list.
 
    Child body:
+
    ```
    Part of #<epic>            (written as `Part of #EPIC` now, filled in at publish time)
 
@@ -157,6 +159,7 @@ Steps:
    - **Blocked by:** for each blocker in the child's `## Blocked by`, `gh api --method POST repos/<owner>/<repo>/issues/<child>/dependencies/blocked_by -F issue_id=<blocker id>`. Children are created in dependency order, so every blocker already has an id. GitHub then shows the child as blocked in its Relationships box and `/ship-issue` reads the edges from the API; the body text stays as the human-readable fallback.
 
    If a call fails, retry it once; if it still fails, record `parent: no` or the missing edge and continue with the next child.
+
 4. **PR list.** Edit `<folder>/epic.md` so `## PRs` reads `- #<child> <title>` per PR (no checkboxes), then `gh api --method PATCH repos/<owner>/<repo>/issues/<epic> -F body=@<folder>/epic.md --jq .number`. This is the only edit of an existing issue the command makes; it never changes a title.
 5. **Label the children** only if every child exists, has its parent link, has every blocked-by edge and is in the milestone: `gh api --method POST repos/<owner>/<repo>/issues/<child>/labels -f 'labels[]=ready-for-agent' --jq '.[].name'` each. Otherwise STOP and report **publication incomplete** with the missing links or edges and `Run /plan-to-issues <folder>/plan.md again to repair.` Never report success with missing relationships.
 6. Write the final retro notes to `<folder>/retro/<session-id>.md`. Print the epic URL, the milestone URL (`https://github.com/<owner>/<repo>/milestone/<m>`) and the table of children (`#`, title, blocked by, URL), then end with:
