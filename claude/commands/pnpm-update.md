@@ -26,6 +26,7 @@ If the output is empty / `{}`, say "Everything is up to date." and stop.
 Parse the JSON. For each entry capture: package name, current version, latest version, type (`dependencies` / `devDependencies`), and which workspace(s) it appears in.
 
 Classify the bump for each package:
+
 - **patch** — `x.y.Z` only changed
 - **minor** — `x.Y.z` changed (and major matches)
 - **major** — `X.y.z` changed
@@ -55,6 +56,7 @@ PACKAGE                 CURRENT → LATEST    CLASS   RECOMMEND   NOTES
 ```
 
 Recommendation rules:
+
 - `update` — safe to bump now (patch / minor with no known issues).
 - `review` — major bump, but release notes look manageable. Worth doing in this pass with awareness.
 - `hold` — major bump with breaking changes that need code edits before updating. Do NOT include in the upgrade command this round.

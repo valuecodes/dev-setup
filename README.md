@@ -48,7 +48,7 @@ Open this repository in VS Code to use the workspace settings in `.vscode/`.
 - `commands/` — slash commands (`/ship-feature`, `/ship-plan`, `/ship-issue`, `/release`, `/retro`, `/permission-review`, …)
 - `settings.json` — model, permission allowlist, hooks and plugins
 - `hooks/allow-worktree-commands.ts` — PreToolUse hook used by `settings.json`; Node runs it directly by stripping the types. `allow-worktree-commands.test.mjs` next to it holds its offline tests
-- `scripts/prompted-commands.mjs` — read-only report of permission prompts from the local transcripts, used by `/permission-review`
+- `scripts/prompted-commands.ts` — read-only report of permission prompts from the local transcripts, used by `/permission-review`
 
 Link them into `~/.claude` from your clone path (back up existing files first):
 
@@ -97,7 +97,7 @@ pnpm format
 pnpm format:check
 ```
 
-`claude/` is left out of formatting, so the live config stays byte-identical.
+`claude/` is formatted too. Claude Code rewrites `settings.json` in its own layout when you add a permission, so run `pnpm format` again before committing a settings change.
 
 Type-check the hooks:
 

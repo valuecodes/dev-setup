@@ -1,9 +1,7 @@
 {
   "model": "opus",
   "permissions": {
-    "additionalDirectories": [
-      "~/.cargo/registry"
-    ],
+    "additionalDirectories": ["~/.cargo/registry"],
     "allow": [
       "Bash(pnpm lint:*)",
       "Bash(pnpm typecheck:*)",

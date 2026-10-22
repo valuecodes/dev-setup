@@ -36,7 +36,7 @@ const PNPM_FILTER = "[A-Za-z0-9@/._-]+";
 // Whole-command literal forms
 
 const DEV_SERVER = new RegExp(
-  `^setsid nohup pnpm -C ${WORKTREE} --filter ${PNPM_FILTER} dev > \\.plans/dev\\.log 2>&1 &$`,
+  `^setsid nohup pnpm -C ${WORKTREE} --filter ${PNPM_FILTER} dev > \\.plans/dev\\.log 2>&1 &$`
 );
 const SETTINGS_CHECK = `node -e 'JSON.parse(require("fs").readFileSync(process.env.HOME+"/.claude/settings.json","utf8")); console.log("valid")'`;
 
@@ -84,7 +84,8 @@ function parse(cmd: string): Segment[] | null {
       i = end;
     } else if (c === '"') {
       let j = i + 1;
-      for (; j < cmd.length && cmd[j] !== '"'; j++) if ("$`\\".includes(cmd.charAt(j))) return null;
+      for (; j < cmd.length && cmd[j] !== '"'; j++)
+        if ("$`\\".includes(cmd.charAt(j))) return null;
       if (j >= cmd.length) return null;
       raw += cmd.slice(i, j + 1);
       text += cmd.slice(i + 1, j);
@@ -107,7 +108,10 @@ function parse(cmd: string): Segment[] | null {
       // Only `2>&1`, with the `2` as its own word.
       const after = cmd[i + 3];
       const isStderrDup =
-        inWord && plain && raw === "2" && cmd.slice(i + 1, i + 3) === "&1" &&
+        inWord &&
+        plain &&
+        raw === "2" &&
+        cmd.slice(i + 1, i + 3) === "&1" &&
         (after === undefined || " \t;|".includes(after));
       if (!isStderrDup) return null;
       raw = "";
@@ -133,7 +137,8 @@ function parse(cmd: string): Segment[] | null {
 
 const joined = (s: Segment) => s.words.map((w) => w.raw).join(" ");
 const singleQuoted = (w?: Word) => !!w && /^'[^']*'$/.test(w.raw);
-const plainMatch = (w: Word | undefined, re: RegExp) => !!w && w.plain && re.test(w.text);
+const plainMatch = (w: Word | undefined, re: RegExp) =>
+  !!w && w.plain && re.test(w.text);
 const PATH = /^[A-Za-z0-9._/-]+$/;
 
 // Resolve symlinks and require the real target to sit inside a `.plans/` folder under the
@@ -145,7 +150,10 @@ function inPlans(p: string, ctx: Ctx, allowDir = false): boolean {
     if (!real.startsWith(root + sep)) return false;
     const st = statSync(real);
     if (!(st.isFile() || (allowDir && st.isDirectory()))) return false;
-    return real.slice(root.length + 1).split(sep).includes(".plans");
+    return real
+      .slice(root.length + 1)
+      .split(sep)
+      .includes(".plans");
   } catch {
     return false;
   }
@@ -158,12 +166,15 @@ const PNPM_SCRIPTS =
   "lint|typecheck|build|format|format:check|test|secrets:scan|knip|rust:fmt|rust:check|rust:test";
 const PNPM_ARG = "[A-Za-z0-9._/=:@,+-]+";
 const PNPM = new RegExp(
-  `^pnpm -C ${WORKTREE}(?: --filter ${PNPM_FILTER})? (?:${PNPM_SCRIPTS})(?: ${PNPM_ARG})*$`,
+  `^pnpm -C ${WORKTREE}(?: --filter ${PNPM_FILTER})? (?:${PNPM_SCRIPTS})(?: ${PNPM_ARG})*$`
 );
-const pnpmScript = (s: Segment) => PNPM.test(joined(s)) && "pnpm script in a worktree";
+const pnpmScript = (s: Segment) =>
+  PNPM.test(joined(s)) && "pnpm script in a worktree";
 
 const GIT_ARG = "[A-Za-z0-9._/=:@,+~^%-]+";
-const GIT_READ = new RegExp(`^git -C ${WORKTREE} (?:status|diff|log|show)(?: ${GIT_ARG})*$`);
+const GIT_READ = new RegExp(
+  `^git -C ${WORKTREE} (?:status|diff|log|show)(?: ${GIT_ARG})*$`
+);
 // --output writes a file anywhere; --no-index lets diff read any file on disk.
 const GIT_READ_BLOCKED = /^--(?:output|no-index)/;
 const gitRead = (s: Segment) =>
@@ -173,7 +184,8 @@ const gitRead = (s: Segment) =>
 
 const GIT_ADD = new RegExp(`^git -C ${WORKTREE} add(?: ${GIT_ARG})*$`);
 // -f/--force stages ignored files (.env); -i/-p/-e open an interactive prompt or editor.
-const GIT_ADD_BLOCKED = /^(?:--(?:force|interactive|patch|edit)|-[A-Za-z]*[fipe][A-Za-z]*)$/;
+const GIT_ADD_BLOCKED =
+  /^(?:--(?:force|interactive|patch|edit)|-[A-Za-z]*[fipe][A-Za-z]*)$/;
 const gitAdd = (s: Segment) =>
   GIT_ADD.test(joined(s)) &&
   !s.words.some((w) => GIT_ADD_BLOCKED.test(w.text)) &&
@@ -182,17 +194,20 @@ const gitAdd = (s: Segment) =>
 // Only -m messages in double quotes (the tokenizer already refused $, backtick and \ in
 // them), and only the signing fallback as -c (any other -c could set core.hooksPath).
 const GIT_COMMIT = new RegExp(
-  `^git -C ${WORKTREE}(?: -c commit\\.gpgsign=false)? commit(?: -m "[^"\\n]*")+$`,
+  `^git -C ${WORKTREE}(?: -c commit\\.gpgsign=false)? commit(?: -m "[^"\\n]*")+$`
 );
-const gitCommit = (s: Segment) => GIT_COMMIT.test(joined(s)) && "local git commit in a worktree";
+const gitCommit = (s: Segment) =>
+  GIT_COMMIT.test(joined(s)) && "local git commit in a worktree";
 
 const CP_SEED = new RegExp(
-  `^cp -al (?:(?:/|\\./)?(?:${SEG}/)*)?node_modules ${WORKTREE}/node_modules$`,
+  `^cp -al (?:(?:/|\\./)?(?:${SEG}/)*)?node_modules ${WORKTREE}/node_modules$`
 );
-const cpSeed = (s: Segment) => CP_SEED.test(joined(s)) && "node_modules seeding into a worktree";
+const cpSeed = (s: Segment) =>
+  CP_SEED.test(joined(s)) && "node_modules seeding into a worktree";
 
 const ENDPOINT = /^[A-Za-z0-9][A-Za-z0-9/_.?=&%:,-]*$/;
-const jqValue = (w?: Word) => singleQuoted(w) || plainMatch(w, /^[.A-Za-z0-9_]+$/);
+const jqValue = (w?: Word) =>
+  singleQuoted(w) || plainMatch(w, /^[.A-Za-z0-9_]+$/);
 
 function ghApi(s: Segment): string | false {
   const w = s.words;
@@ -231,7 +246,8 @@ function ghGraphql(rest: Word[]): string | false {
     }
     if (["-f", "-F", "--raw-field", "--field"].includes(t.raw)) {
       const v = rest[++i];
-      if (!v || !(FIELD_PLAIN.test(v.raw) || FIELD_QUOTED.test(v.raw))) return false;
+      if (!v || !(FIELD_PLAIN.test(v.raw) || FIELD_QUOTED.test(v.raw)))
+        return false;
       if (v.text.slice(v.text.indexOf("=") + 1).startsWith("@")) return false; // @file upload
       continue;
     }
@@ -245,7 +261,8 @@ function grepPlans(s: Segment, ctx: Ctx): string | false {
   if (w[0]?.raw !== "grep") return false;
   let i = 1;
   while (plainMatch(w[i], /^-[nEiwHc]+$/)) i++;
-  if (!(singleQuoted(w[i]) || plainMatch(w[i], /^[A-Za-z0-9._:@-]+$/))) return false;
+  if (!(singleQuoted(w[i]) || plainMatch(w[i], /^[A-Za-z0-9._:@-]+$/)))
+    return false;
   const files = w.slice(i + 1);
   return (
     files.length > 0 &&
@@ -257,16 +274,24 @@ function grepPlans(s: Segment, ctx: Ctx): string | false {
 function gitleaks(s: Segment, ctx: Ctx): string | false {
   const j = joined(s);
   if (j === "gitleaks version") return "gitleaks version";
-  const path = /^gitleaks dir --redact --no-banner ([A-Za-z0-9._/-]+)$/.exec(j)?.[1];
-  return !!path && inPlans(path, ctx, true) && "gitleaks scan of .plans/ drafts";
+  const path = /^gitleaks dir --redact --no-banner ([A-Za-z0-9._/-]+)$/.exec(
+    j
+  )?.[1];
+  return (
+    !!path && inPlans(path, ctx, true) && "gitleaks scan of .plans/ drafts"
+  );
 }
 
 function inspect(s: Segment): string | false {
   const [cmd, ...a] = s.words;
   if (!cmd) return false;
   const j = joined(s);
-  if (cmd.raw === "ps" && a.every((w) => plainMatch(w, /^[A-Za-z0-9,=-]+$/))) return "ps";
-  if (cmd.raw === "pgrep" && a.every((w) => singleQuoted(w) || plainMatch(w, /^[A-Za-z0-9._-]+$/)))
+  if (cmd.raw === "ps" && a.every((w) => plainMatch(w, /^[A-Za-z0-9,=-]+$/)))
+    return "ps";
+  if (
+    cmd.raw === "pgrep" &&
+    a.every((w) => singleQuoted(w) || plainMatch(w, /^[A-Za-z0-9._-]+$/))
+  )
     return "pgrep";
   if (/^readlink (?:-f )?[A-Za-z0-9._/-]+$/.test(j)) return "readlink";
   if (j === "ss -ltnp") return "ss -ltnp";
@@ -288,7 +313,9 @@ function killDevServer(s: Segment, ctx: Ctx): string | false {
     if (fields[2] !== m[1]) return false;
     const worktrees = realpathSync(join(ctx.cwd, ".worktrees"));
     const procCwd = realpathSync(`/proc/${pid}/cwd`);
-    return procCwd.startsWith(worktrees + sep) && "stop the recorded dev server";
+    return (
+      procCwd.startsWith(worktrees + sep) && "stop the recorded dev server"
+    );
   } catch {
     return false;
   }
@@ -327,7 +354,8 @@ function isFilter(s: Segment): boolean {
       while (plainMatch(a[i], /^-[EFivwxcnoq]+$/)) i++;
       const pattern = a[i];
       const okPattern =
-        !!pattern && (!pattern.plain || /^[A-Za-z0-9._:=@,/+-]+$/.test(pattern.text));
+        !!pattern &&
+        (!pattern.plain || /^[A-Za-z0-9._:=@,/+-]+$/.test(pattern.text));
       return okPattern && i === a.length - 1;
     }
     case "wc":
@@ -338,7 +366,10 @@ function isFilter(s: Segment): boolean {
       return r.length === 0 || (r.length === 1 && r[0] === "-c");
     case "jq": {
       const flags = a.slice(0, -1);
-      return singleQuoted(a.at(-1)) && flags.every((w) => ["-r", "-c", "-e"].includes(w.raw));
+      return (
+        singleQuoted(a.at(-1)) &&
+        flags.every((w) => ["-r", "-c", "-e"].includes(w.raw))
+      );
     }
     default:
       return false;
@@ -390,6 +421,6 @@ if (reason) {
         permissionDecision: "allow",
         permissionDecisionReason: reason,
       },
-    }),
+    })
   );
 }

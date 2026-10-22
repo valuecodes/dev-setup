@@ -1,6 +1,6 @@
 ---
 description: Cut a GitHub Release of everything merged to main since the last release — CI-gated, semver suggested from conventional commits, GitHub-generated notes regrouped by type — tag + release only, no commits
-argument-hint: '[vX.Y.Z[-pre]] [--draft] [--prerelease]'
+argument-hint: "[vX.Y.Z[-pre]] [--draft] [--prerelease]"
 disable-model-invocation: true
 allowed-tools: Read, Write, AskUserQuestion, Bash(git:*), Bash(gh:*), Bash(mkdir:*), Bash(grep:*), Bash(gitleaks:*), Bash(docker:*)
 ---
@@ -30,7 +30,7 @@ Arguments: `$ARGUMENTS` — an optional version (`vX.Y.Z` or `vX.Y.Z-pre`; wins 
    - **Resume** → remember `<draft-tag>`. Later phases reuse it: the version is fixed to `<draft-tag>` (Phase 2 only checks it is still greater than the baseline), the notes are regenerated in Phase 3, and Phase 5 publishes by editing the draft instead of creating a new release. Only one draft can be resumed per run.
    - **Delete** → `gh release delete <tag> --yes --cleanup-tag` (a draft's tag usually does not exist yet; `--cleanup-tag` is a no-op then).
    - **Leave it** → keep going. The draft is ignored. If the version later collides with it, Phase 2 refuses.
-   A draft is **never** a baseline.
+     A draft is **never** a baseline.
 2. **Baseline** = the published (non-draft) release with the latest `publishedAt`; prereleases count. Fallback when no published release exists: `git describe --tags --abbrev=0 --match "v[0-9]*" <sha>` (the nearest reachable semver tag). If a published release exists **and** `git describe` finds a different, newer reachable `v*` tag that has no release, show both and ask which one is the baseline.
 3. **Ancestry:** `git merge-base --is-ancestor <baseline> <sha>`. If it fails, STOP: `Baseline <baseline> is not in main's history; resolve manually.`
 4. **No baseline** → first release. The suggested version is `v0.1.0`, there is no `previous_tag_name`, and the range is all of `<sha>`.
@@ -47,7 +47,7 @@ Arguments: `$ARGUMENTS` — an optional version (`vX.Y.Z` or `vX.Y.Z-pre`; wins 
    - any breaking → major; while the major is `0`, minor instead;
    - else any feat → minor;
    - else → patch.
-   Show the counts (`2 breaking, 5 feat, 11 other`) and list the breaking commits by short SHA + subject so the user can check the call.
+     Show the counts (`2 breaking, 5 feat, 11 other`) and list the breaking commits by short SHA + subject so the user can check the call.
 4. **Version source:** a resumed draft's tag, else a `$ARGUMENTS` version, else the suggestion.
 5. **Validate:**
    - matches `^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$`, else STOP with the expected format;
@@ -66,7 +66,7 @@ Arguments: `$ARGUMENTS` — an optional version (`vX.Y.Z` or `vX.Y.Z-pre`; wins 
    - add a 1–3 sentence plain summary at the top, derived from the PR titles only;
    - add `Closed epics: #<n> <title>, …` from `gh issue list --state closed --search "closed:>=<baseline-published-date>" --limit 200 --json number,title,labels`, filtered to issues that have sub-issues (`gh api repos/<owner>/<repo>/issues/<n>/sub_issues --jq length` > 0). Omit the line when there are none.
    - **Count check:** the number of `* … in https://github.com/…/pull/<n>` lines must equal the count in `<generated>`. If it doesn't, fix it before going on.
-   Commits pushed to main without a PR do not appear in generated notes. That is accepted: `main` is protected and work lands through PRs.
+     Commits pushed to main without a PR do not appear in generated notes. That is accepted: `main` is protected and work lands through PRs.
 3. **Write** the result with the Write tool to `.plans/release-<version>.md` (`mkdir -p .plans` first; it's gitignored scratch space, and the scratchpad is fine if `.plans` is not).
 4. **Scan** (the release is world-readable once published):
    - gitleaks on the file: if `gitleaks dir --help` works, `gitleaks dir --redact --no-banner <file>`; else, if `docker info` works, `docker run --rm -v <dir>:<dir>:ro ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f dir --redact --no-banner <file>` (the same pinned image as `tooling/github/scripts/secrets-scan.sh`); if neither works, say so once. Exit 1 → **STOP** until the PR title or file is fixed.
@@ -91,7 +91,7 @@ Show: version (and the bump reasoning from Phase 2), baseline, target `<short-sh
 3. **Create or publish:**
    - New release: `gh release create <version> --target <sha> --title <version> --notes-file <file> [--draft] [--prerelease]`.
    - Resumed draft: `gh release edit <version> --target <sha> --title <version> --notes-file <file> [--prerelease] --draft=<true|false per the gate>`.
-   If the command errors or times out, go to step 2. Never blindly retry.
+     If the command errors or times out, go to step 2. Never blindly retry.
 4. Verify with `gh release view <version> --json url,isDraft,isPrerelease,tagName,targetCommitish` and print:
    ```
    Released <version> (<draft|prerelease|latest>) at <short-sha>: <url>

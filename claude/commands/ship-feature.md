@@ -1,25 +1,25 @@
 ---
 description: Build a feature end-to-end — execute the chat's plan in a worktree, commit, self+Codex review, fix, open PR, wait, address PR feedback
-argument-hint: '[path/to/plan.md | feature description]'
+argument-hint: "[path/to/plan.md | feature description]"
 disable-model-invocation: true
 allowed-tools: Read, Edit, Write, Glob, Grep, Task, TodoWrite, AskUserQuestion, Bash(git:*), Bash(gh:*), Bash(pnpm:*), Bash(node:*), Bash(ls:*), Bash(mkdir:*), Bash(sleep:*), Bash(cd:*), Bash(tail:*), Bash(head:*), Bash(grep:*), Bash(sed:*), Bash(sort:*), Bash(ssh-add:*), Bash(setsid:*), Bash(kill:*), Bash(fuser:*), Bash(ss:*), Bash(readlink:*), Bash(cp:*)
 ---
 
 Drive a feature from idea to addressed-PR in one run: take the spec → isolate it in a git worktree → build → commit → review (your own security/bug review **and** an independent Codex review) → fix and commit → open a PR → wait for automated review → triage and address that feedback.
 
-**Intended workflow:** the user plans normally in this chat (plan mode), gets a plan, *then* runs `/ship-feature` to execute it. So the spec comes from the plan already in this conversation — see Phase 1. Any text passed as arguments (`$ARGUMENTS`) is only a fallback description for ad-hoc features when there's no plan.
+**Intended workflow:** the user plans normally in this chat (plan mode), gets a plan, _then_ runs `/ship-feature` to execute it. So the spec comes from the plan already in this conversation — see Phase 1. Any text passed as arguments (`$ARGUMENTS`) is only a fallback description for ad-hoc features when there's no plan.
 
-This command *owns* the commits and pushes. It runs **fully automatically from spec through build** — auto-committing locally (the worktree branch is isolated, reversible, and unpushed) — and **gates only the three actions that leave the machine**: push + open PR (Gate C), the PR-feedback push (Gate D), and posting replies (Gate E). Never pass one of those gates without an affirmative `AskUserQuestion` answer.
+This command _owns_ the commits and pushes. It runs **fully automatically from spec through build** — auto-committing locally (the worktree branch is isolated, reversible, and unpushed) — and **gates only the three actions that leave the machine**: push + open PR (Gate C), the PR-feedback push (Gate D), and posting replies (Gate E). Never pass one of those gates without an affirmative `AskUserQuestion` answer.
 
 **Visibility without editor windows.** This command does **not** open VS Code windows. It cannot close them either: the `code` remote CLI has no close command, and WSL cannot reach the Windows-side window manager. So do not try. Instead, after the first green commit it restarts the web dev server on `http://localhost:3000/` from the worktree (Phase 4a), killing the previous one, so localhost always shows the latest build. The Gate C diff is the other place to see the work.
 
 ## Hard rules
 
 - **Push only over the repo's HTTPS URL via the `gh` token** — never over the SSH `origin` (it would block on the key passphrase, which the non-interactive shell can't answer). Never `--no-verify`. Never force-push.
-- **Signing fallback (never block on it).** Decide signing once in Phase 0. If commit signing can't run non-interactively, make every commit with `-c commit.gpgsign=false` (unsigned) and warn the user once. As a safety net, if any commit still fails with a signing error, retry that exact commit once with `-c commit.gpgsign=false`. Never use `--no-verify` for this (it also skips hooks). Caveat: if the base branch *requires* signed commits, unsigned pushes are rejected — surface that and STOP instead.
+- **Signing fallback (never block on it).** Decide signing once in Phase 0. If commit signing can't run non-interactively, make every commit with `-c commit.gpgsign=false` (unsigned) and warn the user once. As a safety net, if any commit still fails with a signing error, retry that exact commit once with `-c commit.gpgsign=false`. Never use `--no-verify` for this (it also skips hooks). Caveat: if the base branch _requires_ signed commits, unsigned pushes are rejected — surface that and STOP instead.
 - Never **push** or post without passing the relevant gate (C / D / E); local commits are automatic (the worktree branch is unpushed and reversible). Never `--no-verify`. Never force-push.
 - Never post PR replies without Gate E. Never reply to your own past comments.
-- **Emit `gh`/`git` commands so the allowlist matches.** Write each as a single command that *starts with the tool name* (`gh api …`, `git -C … …`) with literal values inlined. Do NOT hoist values into leading `VAR=…;` assignment statements and do NOT use a leading `VAR=val gh …` env prefix — Claude Code splits on `;`/newlines and matches each sub-command independently, and it does not strip env-var prefixes, so either form defeats `Bash(gh:*)`/`Bash(git:*)` and forces a needless permission prompt. (Process wrappers `timeout`/`time`/`nice`/`nohup`/`stdbuf` are fine — those are stripped.) Any piped helper needs its own rule too: `gh api … | head` requires both `gh` and `head` (both already allowed here).
+- **Emit `gh`/`git` commands so the allowlist matches.** Write each as a single command that _starts with the tool name_ (`gh api …`, `git -C … …`) with literal values inlined. Do NOT hoist values into leading `VAR=…;` assignment statements and do NOT use a leading `VAR=val gh …` env prefix — Claude Code splits on `;`/newlines and matches each sub-command independently, and it does not strip env-var prefixes, so either form defeats `Bash(gh:*)`/`Bash(git:*)` and forces a needless permission prompt. (Process wrappers `timeout`/`time`/`nice`/`nohup`/`stdbuf` are fine — those are stripped.) Any piped helper needs its own rule too: `gh api … | head` requires both `gh` and `head` (both already allowed here).
 - **Change files only with the Edit and Write tools**, never through a shell script (`python3 - <<'EOF'`, `node -e`, `sed -i`, `perl -pi`, `cat > file <<EOF`). A script can run anything, so no allow rule can safely cover it and it prompts every time, while Edit/Write on worktree paths is allowlisted. Several edits to one file are several Edit calls. Run follow-up commands such as `pnpm -C .worktrees/<slug> format` and `git -C .worktrees/<slug> status --short` as separate Bash calls, not chained with `;`.
 - Fix root causes — never silence a check (no `eslint-disable`, no `as any`, no skipped tests) unless it is genuinely the correct fix and you say why.
 - Do all feature work in the worktree. **Never auto-remove it** — always keep it and print the manual cleanup hint at the end. Never delete the `feat/<slug>` branch (the PR depends on it).
@@ -53,7 +53,7 @@ This is the one definition; `/ship-plan`, `/ship-issue` and `/plan-to-issues` re
 
 **Explicit plan file — checked first.** If `$ARGUMENTS` is a path ending in `.md`, that file **is** the spec. If it does not exist, STOP (`Plan file not found: <path>`); never fall through to another plan. Otherwise read it in full, print `Spec: <absolute path>`, and never substitute a plan from the chat or a "newest plan" for it. When it lives under `<repo-root>/.plans/<x>/`, `<unit>` is that directory and the slug is `<x>`.
 
-**Primary path — execute the plan from this chat.** Use the implementation plan agreed earlier in THIS conversation as the feature spec; it's already in your context. (If the conversation was compacted and you can't see it, locate the most recent plan file — newest `<repo>/.plans/*/plan.md`, then newest in `~/.claude/plans/` — and use that.) Summarize the plan as the build spec and seed `TodoWrite` from its steps. Do **not** re-run a full clarification — the plan *is* the spec; only ask if something is genuinely missing or contradictory.
+**Primary path — execute the plan from this chat.** Use the implementation plan agreed earlier in THIS conversation as the feature spec; it's already in your context. (If the conversation was compacted and you can't see it, locate the most recent plan file — newest `<repo>/.plans/*/plan.md`, then newest in `~/.claude/plans/` — and use that.) Summarize the plan as the build spec and seed `TodoWrite` from its steps. Do **not** re-run a full clarification — the plan _is_ the spec; only ask if something is genuinely missing or contradictory.
 
 **Fallback — no plan in the chat.** If `$ARGUMENTS` carries a description, run a brief clarify Q&A via `AskUserQuestion` (scope / constraints / acceptance) — one or two rounds, don't interrogate. If there's neither a plan nor a description, ask what to build.
 
@@ -63,7 +63,7 @@ Derive the slug + branch name `feat/<slug>` now (used in Phase 2). The **unit fo
 Tip: run /rename <slug> to retitle this session.
 ```
 
-**Codex plan review (auto, before the build).** Stress-test the *plan itself* before any build effort, then adjust it:
+**Codex plan review (auto, before the build).** Stress-test the _plan itself_ before any build effort, then adjust it:
 
 1. Write the build spec (the plan summary, verbatim — don't trim) to `<unit>/spec.md` (in the workspace and locally ignored, so it's never tracked or pushed; fixed name so no `date`/timestamp call is needed). When `/ship-plan` or `/ship-issue` already wrote the spec there, review that file as it is.
 2. Resolve the companion path **without command substitution** (a `$(…)` forces a permission prompt every run): run `ls ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null` and take the highest-version path. If none is found, print "Codex companion not found — skipping plan review (run /codex:setup to enable)" and go straight to Phase 2. Never abort the run over this.
@@ -86,12 +86,12 @@ prompts. It does not match the `apps/*`/`packages/*`/`tooling/*` workspace globs
 install ignores it.
 
 1. Ensure `.worktrees/` is ignored locally (no committed repo change): if `git -C <repo-root>
-   check-ignore .worktrees` doesn't already match, append `.worktrees/` to
+check-ignore .worktrees` doesn't already match, append `.worktrees/` to
    `<repo-root>/.git/info/exclude`. This keeps the worktree from showing as untracked. Do the
    same for `.plans/` (`mkdir -p <repo-root>/.plans`). It holds the unit folders and the dev
    server's PID and log (Phase 4a). It is not under `.claude/` or `.git/`, because Claude Code
    treats both as protected paths and prompts on every write there.
-2. Branch from the *remote* base, not the possibly-stale local ref:
+2. Branch from the _remote_ base, not the possibly-stale local ref:
    ```bash
    git fetch <https-url> <base>
    git rev-parse FETCH_HEAD    # -> <base_sha>
@@ -174,19 +174,21 @@ This is best effort. Never fail or pause the ship over the dev server. On any pr
 3. Show title + body in two fenced blocks.
 
 **Gate C.** `AskUserQuestion` (`Push and open this PR?`): `Push + open PR (Recommended)` / `Edit first` / `Cancel`. On affirmative, first write the body with the **Write tool** to `<unit>/pr-body.md` (in the workspace and locally ignored, so it's never tracked or pushed; fixed name so no timestamp call is needed), then:
+
 ```bash
 git -C ".worktrees/<slug>" push <https-url> HEAD:feat/<slug>
 gh pr create --base <base> --head feat/<slug> --title "<title>" --body-file <unit>/pr-body.md
 ```
+
 Use `--body-file` (not `--body "$(cat …)"`) — a `$(…)` command substitution forces a permission prompt every run regardless of the allowlist, and `--body-file` preserves newlines anyway. Print the PR URL. If the push 403s, the PAT lacks `Contents: write` — STOP and report.
 
 ## Phase 8 — Wait for automated review (bounded polling)
 
 1. Right after the PR is created, record the creation timestamp and baseline counts of issue comments + review comments + reviews.
-2. Poll for *new* automated review activity — do NOT just sleep a flat 5 min, and do NOT treat CI checks finishing as review completion (bots like Codex / CodeRabbit post on their own schedule). Loop:
+2. Poll for _new_ automated review activity — do NOT just sleep a flat 5 min, and do NOT treat CI checks finishing as review completion (bots like Codex / CodeRabbit post on their own schedule). Loop:
    - Launch `sleep 60` as a **background** Bash command (foreground sleep is disallowed; backgrounding yields the turn and re-invokes you on exit).
    - On resume, re-fetch the three comment sources and compare counts to the baseline.
-3. Stop when **either** new comments/reviews have appeared *and* counts held steady for one extra interval (review settled), **or** a max wait (~10 min) is reached. Report what arrived (or `no automated review within <max>`) and proceed.
+3. Stop when **either** new comments/reviews have appeared _and_ counts held steady for one extra interval (review settled), **or** a max wait (~10 min) is reached. Report what arrived (or `no automated review within <max>`) and proceed.
 
 ## Phase 9 — Address PR feedback (Gates D + E)
 
@@ -205,27 +207,32 @@ Use `--body-file` (not `--body "$(cat …)"`) — a `$(…)` command substitutio
    - **ci-failure** — a failed Action / check that points at a real problem in the diff (test/typecheck/lint/format). Will be fixed. NO reply (CI re-runs after push). Use the check name as `AUTHOR`, the failed-job URL as the `id`, and a one-line root cause (from the failed log tail) as the summary.
 
    Show one table:
+
    ```
    ID           AUTHOR                FILE:LINE                  CLASS         ONE-LINE SUMMARY
    <id>         <user | check-name>   <path:line | -->           <class>       <≤ 90 chars>
    ```
+
    Then a fix plan for every `valid` / `ci-failure` row, grouping related fixes (same file or shared root cause) into one edit when natural:
+
    ```
    [id <id>]  <file>(:line)
      → <one-line description of the change>
    ```
+
 3. Apply fixes for valid + ci-failure (if any) in the worktree; re-run the quality gates until green.
 
 **Gate D** (only if there ARE code fixes). `AskUserQuestion` (`Commit + push the fixes?`): `Commit + push (Recommended)` / `Edit fixes` / `Cancel`. On affirmative → `git -C ".worktrees/<slug>" add -A`, commit (`fix: address PR review feedback`), `git -C ".worktrees/<slug>" push <https-url> HEAD:feat/<slug>`. Capture the new SHA (`git -C ".worktrees/<slug>" rev-parse HEAD`).
 
 4. Draft replies: `valid` → `Fixed in <sha>: <one line>.`; `question` → answer directly; `approved` → `👍 thanks`. Skip `ci-failure` (CI re-runs after push) and `noise`.
 
-**Gate E** (whenever there is *anything* to post — replies to questions or approvals still require it even if **zero** code fixes were needed). `AskUserQuestion` (`Post these replies (and resolve fix-landed threads)?`): `Post (Recommended)` / `Edit drafts` / `Cancel`. On affirmative:
+**Gate E** (whenever there is _anything_ to post — replies to questions or approvals still require it even if **zero** code fixes were needed). `AskUserQuestion` (`Post these replies (and resolve fix-landed threads)?`): `Post (Recommended)` / `Edit drafts` / `Cancel`. On affirmative:
+
 - Review/line comment → `gh api --method POST repos/<owner>/<repo>/pulls/<PR>/comments/<id>/replies -f body="<reply>"`.
 - General PR comment → `gh pr comment <PR> --body "<reply>"`.
 - Resolve only **fix-landed** threads (reply starts with `Fixed in <sha>:`). List threads via paginated GraphQL — `reviewThreads(first:100, after:$cursor)` following `pageInfo.endCursor`/`hasNextPage`, and page each thread's `comments` too; then `resolveReviewThread` per matched thread. Do NOT resolve noise/question/approved/ci-failure/deferred threads.
 
-Only skip to the summary if there is genuinely nothing actionable *and* nothing to reply to.
+Only skip to the summary if there is genuinely nothing actionable _and_ nothing to reply to.
 
 ## Final summary
 

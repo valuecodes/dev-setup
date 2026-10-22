@@ -18,6 +18,7 @@ Steps:
    - `<subject>` is a present-tense, imperative summary (e.g. "add hat wobble", not "added" or "adds"). Lowercase, no trailing period, ideally under 72 chars.
 
 Type guide:
+
 - `feat`: new user-facing feature
 - `fix`: user-facing bug fix
 - `docs`: documentation only

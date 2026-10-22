@@ -1,6 +1,6 @@
 ---
 description: Turn one bug or small idea into a single ready-for-agent GitHub issue for /ship-issue — explore, one short clarify round, scan the body, publish (optionally under an existing epic). No epic, no Codex review; /ship-issue reviews the spec when it ships
-argument-hint: '<description> [--epic <n>] [--blocked-by <n>[,<n>]]'
+argument-hint: "<description> [--epic <n>] [--blocked-by <n>[,<n>]]"
 disable-model-invocation: true
 allowed-tools: Read, Edit, Write, Glob, Grep, Task, TodoWrite, AskUserQuestion, Bash(git:*), Bash(gh:*), Bash(ls:*), Bash(mkdir:*), Bash(cat:*), Bash(head:*), Bash(tail:*), Bash(grep:*), Bash(gitleaks:*), Bash(docker:*)
 ---
@@ -57,6 +57,7 @@ If `<draft>/issue.md` already ends with a `created: #<n>` line, an earlier run p
    Title: plain English, capitalized, ≤72 chars, no trailing period.
 
    **Content rules.** Derived from the exploration and the answers only. No tool output, logs, stack traces, env values, hostnames, internal URLs, names or emails. Paths repo-relative, never `/home/<user>/…`. No credentials, not even examples.
+
 2. **Scan.** gitleaks on the draft: `gitleaks dir --redact --no-banner <draft>` if `gitleaks dir --help` works; else, if `docker info` works, `docker run --rm -v <draft>:<draft>:ro ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f dir --redact --no-banner <draft>`; else say so once. Exit 1 = findings: **STOP** until removed. Then `grep -nEi '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|/home/|C:\\Users|([0-9]{1,3}\.){3}[0-9]{1,3}|https?://|passwd|password|secret|token|api[_-]?key|bearer|BEGIN .*PRIVATE KEY' <draft>/issue.md`; drop `127.0.0.1` and `https://github.com/` hits; list the rest as `line: text`.
 3. Show the title, the body in full, and `Scan: clean` or the hit list.
 
@@ -72,7 +73,7 @@ Steps, each safe to repeat:
 4. **Relationships** (numeric ids: `gh api repos/<owner>/<repo>/issues/<n> --jq .id`, one standalone call per issue):
    - with `--epic`: `gh api --method POST repos/<owner>/<repo>/issues/<epic>/sub_issues -F sub_issue_id=<issue id>`;
    - per blocker: `gh api --method POST repos/<owner>/<repo>/issues/<n>/dependencies/blocked_by -F issue_id=<blocker id>`.
-   Retry a failed call once; if it still fails, report it and continue (the body text is the fallback `/ship-issue` reads).
+     Retry a failed call once; if it still fails, report it and continue (the body text is the fallback `/ship-issue` reads).
 5. **Label last**, only once the relationships are in place: `gh api --method POST repos/<owner>/<repo>/issues/<n>/labels -f 'labels[]=ready-for-agent' --jq '.[].name'`. If a relationship is missing, STOP with `publication incomplete` and `Run /to-issue again to repair` (the `created:` line makes it resume).
 6. **Unit folder.** `mkdir -p <repo-root>/.plans/issue-<n>` and Write a copy of the body to `.plans/issue-<n>/issue.md`: that is where `/ship-issue` keeps this issue's spec, PR body and retro notes. Write the retro summary to `.plans/issue-<n>/retro/<session-id>.md`.
 7. Print the issue URL and end with:

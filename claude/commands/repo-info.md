@@ -1,13 +1,13 @@
 ---
 description: Work out what this repo is about, grill the user on audience and pitch, then draft the GitHub Description, Website and Topics to paste into "Edit repository details" (nothing is written to GitHub)
-argument-hint: '[hint about audience or focus]'
+argument-hint: "[hint about audience or focus]"
 disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Task, AskUserQuestion, Bash(gh:*), Bash(git:*), Bash(ls:*), Bash(mkdir:*), Bash(cat:*), Bash(head:*), Bash(grep:*), Bash(wc:*)
 ---
 
 Draft the three fields of GitHub's **Edit repository details** form (Description, Website, Topics) for the current repo: explore the code to find out what it is → ask the user the few decisions that are theirs → write the draft to a local file → check it for anything sensitive → print the values to paste.
 
-**This command never writes to GitHub.** Updating those fields needs the *Administration: Read and write* repository permission, which also allows deleting the repo, changing visibility, branch protection, collaborators, webhooks and deploy keys. The token intentionally lacks it. Do not run `gh repo edit`, do not print a `gh repo edit` command, and do not suggest adding the permission. The user pastes the values into the form.
+**This command never writes to GitHub.** Updating those fields needs the _Administration: Read and write_ repository permission, which also allows deleting the repo, changing visibility, branch protection, collaborators, webhooks and deploy keys. The token intentionally lacks it. Do not run `gh repo edit`, do not print a `gh repo edit` command, and do not suggest adding the permission. The user pastes the values into the form.
 
 **Hard rules** (inherited from `~/.claude/commands/ship-feature.md`): emit `gh`/`git` commands that start with the tool name, with literal values inlined, no `$(…)`, no leading `VAR=` assignments; change files only with the Edit and Write tools.
 
@@ -38,7 +38,7 @@ Number the questions and give a recommended answer for each, worded so that "yes
 **Round 1**, always:
 
 1. **Audience** — who should find this repo (end users, contributors, both). Recommend what Phase 1 implies.
-2. **Pitch angle** — describe *what it is* (product noun first) or *what it is for* (problem first). Recommend one, with a draft sentence as the option description.
+2. **Pitch angle** — describe _what it is_ (product noun first) or _what it is for_ (problem first). Recommend one, with a draft sentence as the option description.
 3. **Website** — one of: a URL found in Phase 1, leave empty, or the user supplies one. Recommend "leave empty" when nothing was found.
 4. **Topic emphasis** — problem domain first, stack first, or balanced. Recommend balanced with the domain topics first.
 

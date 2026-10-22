@@ -17,5 +17,9 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["claude/hooks/**/*.ts", "claude/hooks/**/*.mts"]
+  "include": [
+    "claude/hooks/**/*.ts",
+    "claude/hooks/**/*.mts",
+    "claude/scripts/**/*.ts"
+  ]
 }
