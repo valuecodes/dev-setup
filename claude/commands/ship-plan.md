@@ -13,6 +13,8 @@ Ship a plan that is split into several PRs (`## PR A …`, `## PR B …`, …) *
 
 **Relationship to `/ship-feature`.** This command does not duplicate it. Phases 4–5 below say "follow `~/.claude/commands/ship-feature.md` Phases N–M verbatim": read that file and execute those phases with the overrides listed here. Its hard rules all apply (HTTPS push via the gh token only, signing fallback with `-c commit.gpgsign=false`, never `--no-verify`, never force-push, allowlist-friendly command shapes with no `$(…)` / leading `VAR=` prefixes, never auto-remove a worktree, never delete a `feat/*` branch, local commits automatic, gates C/D/E before anything leaves the machine). If `ship-feature.md` has dropped out of context after a compaction, re-read it before continuing a phase.
 
+**Retro notes.** Follow ship-feature's **Retro notes** section throughout, with `<unit>` = `.plans/<plan-slug>/prs/<id>/` once the next PR is known (before that, `.plans/<plan-slug>/`).
+
 Arguments: `$ARGUMENTS` — an optional plan path and an optional `--continue` flag.
 
 ## Phase 0 — Resolve plan + state (read-only)
@@ -35,13 +37,17 @@ Arguments: `$ARGUMENTS` — an optional plan path and an optional `--continue` f
          issue.md       issue body (/plan-to-issues)
          pr-body.md     PR body (ship-feature Phase 7)
          replies.md     reply drafts (/ship-issue guard)
+         retro/<session-id>.md   retro notes, one per session (ship-feature "Retro notes")
+       retro/<session-id>.md     plan-level retro notes (/plan-to-issues, early /ship-plan stops)
+       retro-summary.md, retro-plan.md, retro-backups/   /retro output
      <feature-slug>/    standalone /ship-feature run: the unit files directly inside
      issue-<n>/         /ship-issue for an issue no plan folder maps: the unit files directly inside
+     to-issue/<slug>/   /to-issue draft (issue.md, with a trailing created: #<n> line once posted)
      dev.pid, dev.log   repo-wide dev server
      repo-info.md       /repo-info draft
    ```
 
-   **`<plan-slug>`** comes from the plan's `# title`, never from its file name (plan mode saves plans under generated names like `i-want-to-build-eager-patterson.md`): lowercase it, drop anything in parentheses, drop a trailing word `plan`, turn every run of non-alphanumeric characters into `-`, trim `-` from both ends, and cut to at most 50 characters at a `-`. `# Private Context AI — desktop MVP (local chat) plan` → `private-context-ai-desktop-mvp`.
+   **`<plan-slug>`** comes from the plan's `# title`, never from its file name (plan mode saves plans under generated names like `i-want-to-build-eager-patterson.md`): lowercase it, drop anything in parentheses, drop a trailing word `plan`, turn every run of non-alphanumeric characters into `-`, trim `-` from both ends, and cut to at most 50 characters at a `-`. `# Acme App — desktop MVP (local chat) plan` → `acme-app-desktop-mvp`.
 
    **Copying an external plan in.** If `.plans/<plan-slug>/` already exists, decide by origin, never by title (titles change between revisions): when its `state.md` or `issues.md` has a `source:` line with this same path, reuse the folder; otherwise `AskUserQuestion` (`Same plan as .plans/<plan-slug>/?`): `Reuse this folder` / `New folder <plan-slug>-2` / `Cancel`. Never add the suffix silently. Then `mkdir -p .plans/<plan-slug>/prs`, and `cp <external path> .plans/<plan-slug>/plan.md` unless that `plan.md` already exists (it is then the canonical copy; do not overwrite it). Record the external path as `source:` in `state.md`. From then on read only `plan.md`; Codex reads it there too, inside the workspace.
 
@@ -145,7 +151,7 @@ Follow `ship-feature.md` **Phases 8–9 verbatim** (bounded polling for the Copi
 
 ## Phase 6 — Hand-off
 
-1. Update the state row (`pushed`, PR URL, last fix SHA) and `last-run`.
+1. Update the state row (`pushed`, PR URL, last fix SHA) and `last-run`. Write the hand-off retro notes to `<unit>/retro/<session-id>.md`.
 2. Print: `State: .plans/<plan-slug>/state.md`; `Dev: http://localhost:3000/` (or that it is not running); worktrees removed in Phase 1b; the refreshed table; this PR's URL; findings (self vs Codex) and fixes applied; PR comments triaged/fixed/replied/resolved; quality-gate status; the next PR id and title; and a note that `.worktrees/<slug>` stays until its PR is merged, when the next run removes it (Phase 1b). Never remove it now, never delete the branch now.
 3. End with:
    ```
@@ -153,4 +159,4 @@ Follow `ship-feature.md` **Phases 8–9 verbatim** (bounded polling for the Copi
    ```
    With `--continue`: poll for the merge as in Phase 1 and, once `merged`, go back to Phase 1 in the same session. Mention once that the default (one PR per run) is recommended because each run then starts with an empty context and compaction never lands mid-build.
 
-When Phase 1 finds every PR `merged`, print `Plan complete.` with the final table and stop. Leave the plan folder in place; the user deletes it.
+When Phase 1 finds every PR `merged`, print `Plan complete.` with the final table and `Run /retro .plans/<plan-slug> to review it.`, then stop. Leave the plan folder in place; the user deletes it.

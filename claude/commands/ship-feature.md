@@ -1,6 +1,6 @@
 ---
 description: Build a feature end-to-end — execute the chat's plan in a worktree, commit, self+Codex review, fix, open PR, wait, address PR feedback
-argument-hint: '[optional: feature description]'
+argument-hint: '[path/to/plan.md | feature description]'
 disable-model-invocation: true
 allowed-tools: Read, Edit, Write, Glob, Grep, Task, TodoWrite, AskUserQuestion, Bash(git:*), Bash(gh:*), Bash(pnpm:*), Bash(node:*), Bash(ls:*), Bash(mkdir:*), Bash(sleep:*), Bash(cd:*), Bash(tail:*), Bash(head:*), Bash(grep:*), Bash(sed:*), Bash(sort:*), Bash(ssh-add:*), Bash(setsid:*), Bash(kill:*), Bash(fuser:*), Bash(ss:*), Bash(readlink:*), Bash(cp:*)
 ---
@@ -24,6 +24,21 @@ This command *owns* the commits and pushes. It runs **fully automatically from s
 - Fix root causes — never silence a check (no `eslint-disable`, no `as any`, no skipped tests) unless it is genuinely the correct fix and you say why.
 - Do all feature work in the worktree. **Never auto-remove it** — always keep it and print the manual cleanup hint at the end. Never delete the `feat/<slug>` branch (the PR depends on it).
 
+## Retro notes
+
+This is the one definition; `/ship-plan`, `/ship-issue` and `/plan-to-issues` refer to it. `/retro` reads these notes later to propose environment improvements, so record facts while they are still in context.
+
+- **File:** `<unit>/retro/<session-id>.md`, one per session so a later run never overwrites an earlier one. `<session-id>` is the UUID directory that holds this session's scratchpad (`…/<session-id>/scratchpad`); it is also the transcript name `~/.claude/projects/<project>/<session-id>.jsonl`. If no scratchpad path is in context, use `unknown-<YYYYMMDD-HHMM>`. Local only, never posted.
+- **When:** the first time a noteworthy event happens, Write the file with a header (`session:`, `command:`, issue/PR/slug, date) and a `## Events` list. On each later event, Write the whole file again with every note so far (this session is its only writer). Noteworthy events:
+  - every STOP, written **before** stopping, with the reason;
+  - a gate answered with anything but the recommended option, and what was edited;
+  - a quality gate failing (gate name; count iterations), a CI check failing at Phase 9;
+  - a permission prompt or denial on a command the allowlist was meant to cover;
+  - a retried or partially failed network call (push, publish, link).
+- **At hand-off** (the final summary), Write it once more with a `## Summary` section, at most 15 bullets: spec drift (what the re-plan or build changed against the plan, and why); findings per source (self / Codex spec / Codex code / Copilot) as valid vs rejected counts plus one line per valid finding tagged `mechanical` or `judgement`; quality-gate loops; gate answers other than the recommended one; permission friction, expensive or repeated tool calls, slow file-finding; information the agent could not get.
+- **Content:** facts only, no proposals. No prompt, reply or code text, no logs, env values or secrets.
+- No new gate and no extra network calls.
+
 ## Phase 0 — Pre-flight (read-only, fail fast)
 
 1. `gh auth status` must succeed. If it fails, STOP and tell the user to run `gh auth login` (a fine-grained PAT scoped to this repo works — it needs Contents R/W, Pull requests R/W, Metadata R, Commit statuses R, Actions R, and Workflows R/W only if the feature touches `.github/workflows/**`). Do not continue.
@@ -35,6 +50,8 @@ This command *owns* the commits and pushes. It runs **fully automatically from s
 7. **Signing pre-flight.** If `git config --get commit.gpgsign` is `true`, check signing can run non-interactively. For `gpg.format=ssh`: `ssh-add -l` must succeed and list a key. If it can't (no agent / `SSH_AUTH_SOCK` unset), set `SIGN=off` for this run — all commits use `git -c commit.gpgsign=false commit …` — and warn once: "Commits will be UNSIGNED — the signing key is passphrase-protected and no ssh-agent is available non-interactively. To keep them verified, run `eval \"$(ssh-agent)\" && ssh-add ~/.ssh/id_ed25519` before `/ship-feature`." If signing works, commit normally. If the base branch requires signed commits and `SIGN=off`, STOP.
 
 ## Phase 1 — Establish the spec (no gate)
+
+**Explicit plan file — checked first.** If `$ARGUMENTS` is a path ending in `.md`, that file **is** the spec. If it does not exist, STOP (`Plan file not found: <path>`); never fall through to another plan. Otherwise read it in full, print `Spec: <absolute path>`, and never substitute a plan from the chat or a "newest plan" for it. When it lives under `<repo-root>/.plans/<x>/`, `<unit>` is that directory and the slug is `<x>`.
 
 **Primary path — execute the plan from this chat.** Use the implementation plan agreed earlier in THIS conversation as the feature spec; it's already in your context. (If the conversation was compacted and you can't see it, locate the most recent plan file — newest `<repo>/.plans/*/plan.md`, then newest in `~/.claude/plans/` — and use that.) Summarize the plan as the build spec and seed `TodoWrite` from its steps. Do **not** re-run a full clarification — the plan *is* the spec; only ask if something is genuinely missing or contradictory.
 
@@ -212,6 +229,6 @@ Only skip to the summary if there is genuinely nothing actionable *and* nothing 
 
 ## Final summary
 
-Print: worktree path + branch; commit SHA(s); PR URL; `Dev: http://localhost:3000/` (or that it is not running); findings (self vs Codex, by severity); fixes applied; PR comments triaged/fixed/replied/resolved; quality-gate status.
+First write the hand-off retro notes (see **Retro notes**). Then print: worktree path + branch; commit SHA(s); PR URL; `Dev: http://localhost:3000/` (or that it is not running); findings (self vs Codex, by severity); fixes applied; PR comments triaged/fixed/replied/resolved; quality-gate status.
 
 **Worktree (no gate).** Always **keep** the worktree — never auto-remove it. End the summary with the manual cleanup hint for when the user is done: `git worktree remove .worktrees/<slug>`. Run it from `<repo-root>`, and first stop the dev server if it serves from that worktree: `kill -- -<pid from .plans/dev.pid>`. The tree is clean after the commit, so add `--force` only if it refuses because of leftover ignored or build files. **Never delete the `feat/<slug>` branch** — the pushed branch and PR depend on it.

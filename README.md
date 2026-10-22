@@ -45,18 +45,21 @@ Open this repository in VS Code to use the workspace settings in `.vscode/`.
 
 `claude/` holds the global Claude Code config that normally lives in `~/.claude`:
 
-- `commands/` — slash commands (`/ship-feature`, `/ship-plan`, `/ship-issue`, …)
+- `commands/` — slash commands (`/ship-feature`, `/ship-plan`, `/ship-issue`, `/release`, `/retro`, `/permission-review`, …)
 - `settings.json` — model, permission allowlist, hooks and plugins
-- `hooks/allow-worktree-commands.ts` — PreToolUse hook used by `settings.json`; Node runs it directly by stripping the types
+- `hooks/allow-worktree-commands.ts` — PreToolUse hook used by `settings.json`; Node runs it directly by stripping the types. `allow-worktree-commands.test.mjs` next to it holds its offline tests
+- `scripts/prompted-commands.mjs` — read-only report of permission prompts from the local transcripts, used by `/permission-review`
 
 Link them into `~/.claude` from your clone path (back up existing files first):
 
 ```bash
 mv ~/.claude/commands ~/.claude/commands.bak
 mv ~/.claude/hooks ~/.claude/hooks.bak
+mv ~/.claude/scripts ~/.claude/scripts.bak
 mv ~/.claude/settings.json ~/.claude/settings.json.bak
 ln -s /absolute/path/to/dev-setup/claude/commands ~/.claude/commands
 ln -s /absolute/path/to/dev-setup/claude/hooks ~/.claude/hooks
+ln -s /absolute/path/to/dev-setup/claude/scripts ~/.claude/scripts
 ln -s /absolute/path/to/dev-setup/claude/settings.json ~/.claude/settings.json
 ```
 
