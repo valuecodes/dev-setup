@@ -11,6 +11,8 @@ Turn an idea (or an existing plan) into GitHub issues that `/ship-issue` can shi
 
 **Hard rules** (inherited from `~/.claude/commands/ship-feature.md`): emit `gh`/`git` commands that start with the tool name, with literal values inlined, no `$(…)`, no leading `VAR=` assignments; change files only with the Edit and Write tools; pass bodies with `--body-file`, never `--body "$(cat …)"`. Nothing leaves the machine before the Phase 5 gate.
 
+**Retro notes.** Follow ship-feature's **Retro notes** section, with `<unit>` = `<folder>` once it exists (before that, `<repo-root>/.plans/`). Extra events here: a grilling round whose answer overrode your recommendation, a Phase 3 split change, a Phase 4b scan hit, a Phase 5 retry or `publication incomplete`. At the end (after the step 6 print, or before any STOP), the summary covers: grilling rounds used, split changes, Codex whole-plan findings applied vs rejected (one line per applied finding), scan hits, publish retries.
+
 Arguments: `$ARGUMENTS` — a feature description, or a path to an existing plan file. Both optional.
 
 ## Phase 0 — Pre-flight (read-only)
@@ -157,7 +159,7 @@ Steps:
    If a call fails, retry it once; if it still fails, record `parent: no` or the missing edge and continue with the next child.
 4. **PR list.** Edit `<folder>/epic.md` so `## PRs` reads `- #<child> <title>` per PR (no checkboxes), then `gh api --method PATCH repos/<owner>/<repo>/issues/<epic> -F body=@<folder>/epic.md --jq .number`. This is the only edit of an existing issue the command makes; it never changes a title.
 5. **Label the children** only if every child exists, has its parent link, has every blocked-by edge and is in the milestone: `gh api --method POST repos/<owner>/<repo>/issues/<child>/labels -f 'labels[]=ready-for-agent' --jq '.[].name'` each. Otherwise STOP and report **publication incomplete** with the missing links or edges and `Run /plan-to-issues <folder>/plan.md again to repair.` Never report success with missing relationships.
-6. Print the epic URL, the milestone URL (`https://github.com/<owner>/<repo>/milestone/<m>`) and the table of children (`#`, title, blocked by, URL), then end with:
+6. Write the final retro notes to `<folder>/retro/<session-id>.md`. Print the epic URL, the milestone URL (`https://github.com/<owner>/<repo>/milestone/<m>`) and the table of children (`#`, title, blocked by, URL), then end with:
    ```
    Run /ship-issue <first child with no blockers> to start.
    ```

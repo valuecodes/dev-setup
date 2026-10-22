@@ -1,7 +1,9 @@
 {
   "model": "opus",
   "permissions": {
-    "additionalDirectories": ["~/.cargo/registry"],
+    "additionalDirectories": [
+      "~/.cargo/registry"
+    ],
     "allow": [
       "Bash(pnpm lint:*)",
       "Bash(pnpm typecheck:*)",
@@ -20,21 +22,31 @@
       "Bash(gh issue view:*)",
       "Bash(ls:*)",
       "Bash(node \"/home/juha/.claude/plugins/cache/openai-codex/codex/1.0.4/scripts/codex-companion.mjs\" review:*)",
+      "Bash(node \"/home/juha/.claude/plugins/cache/openai-codex/codex/1.0.4/scripts/codex-companion.mjs\" result:*)",
+      "Bash(node \"/home/juha/.claude/plugins/cache/openai-codex/codex/1.0.4/scripts/codex-companion.mjs\" status:*)",
       "Read(~/.claude/plugins/cache/openai-codex/**)",
       "Read(~/.claude/commands/**)",
-      "Edit(.plans/**)",
+      "Edit(**/.plans/**)",
       "Bash(git rev-parse:*)",
       "Bash(git ls-tree:*)",
       "Bash(git check-ignore:*)",
       "Bash(git worktree add .worktrees/*)",
       "Bash(git worktree list:*)",
-      "Bash(cp -al *node_modules .worktrees/*node_modules)",
       "Bash(cargo --version)",
       "Bash(rustc --version)",
+      "Bash(rustup toolchain list:*)",
       "Bash(cargo metadata:*)",
       "Bash(cargo fmt:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo +1.95.0 fmt:*)",
+      "Bash(cargo +1.95.0 clippy:*)",
       "Bash(pkg-config:*)",
-      "Bash(which:*)"
+      "Bash(which:*)",
+      "Bash(ps:*)",
+      "Bash(pgrep:*)",
+      "Bash(readlink:*)"
     ]
   },
   "hooks": {
