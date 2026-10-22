@@ -53,6 +53,15 @@ const since =
 const pattern = mode === "decisions" ? new RegExp(args[1] ?? "") : null;
 const root = join(homedir(), ".claude/projects");
 
+// Repos live under ~/code. A project's transcript folder is its absolute path with every
+// non-alphanumeric character turned into `-` (~/code/app -> -home-<user>-code-app).
+const codeDir = join(homedir(), "code");
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const repoPath = new RegExp(`${escapeRe(codeDir)}/[^\\s/'"]+`, "g");
+const projectPrefix = new RegExp(
+  `^${escapeRe(codeDir.replace(/[^A-Za-z0-9]/g, "-"))}-`
+);
+
 function* jsonlFiles(dir: string): Generator<string> {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
@@ -76,7 +85,7 @@ const describe = (name: string, input: ToolInput = {}) =>
 const normalize = (s: string) =>
   s
     .replace(/\/tmp\/claude-[^\s'"]*/g, "<scratch>")
-    .replace(/\/home\/juha\/code\/[^\s/'"]+/g, "<repo>")
+    .replace(repoPath, "<repo>")
     .replace(/\.worktrees\/[^\s/'"]+/g, ".worktrees/<wt>")
     .replace(
       /\/(pulls|issues|comments|reviews|milestones|runs|alerts)\/\d+/g,
@@ -95,7 +104,7 @@ const shapeOf = (tool: string, text: string) => {
 const rows: Row[] = [];
 for (const file of jsonlFiles(root)) {
   const project = (file.slice(root.length + 1).split("/")[0] ?? "").replace(
-    /^-home-juha-code-/,
+    projectPrefix,
     ""
   );
   const uses = new Map<string, { name: string; input?: ToolInput }>();
