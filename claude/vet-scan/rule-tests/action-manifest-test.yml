@@ -1,0 +1,6 @@
+id: action-manifest
+valid:
+  - "name: x\ndescription: y"
+invalid:
+  - "runs:\n  using: node20\n  main: dist/index.js"
+  - "inputs:\n  github-token:\n    description: t"

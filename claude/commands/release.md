@@ -60,7 +60,9 @@ Arguments: `$ARGUMENTS` — an optional version (`vX.Y.Z` or `vX.Y.Z-pre`; wins 
 1. **Generate** (read-only; creates nothing):
    `gh api --method POST repos/<owner>/<repo>/releases/generate-notes -f tag_name=<version> -f target_commitish=<sha> -f previous_tag_name=<baseline> --jq .body`
    (drop `-f previous_tag_name=…` on a first release). GitHub computes the PR range itself, so there is no client-side pagination or range filtering. Keep the raw body as `<generated>`.
-2. **Regroup.** Parse `<generated>`'s `* <title> by @<user> in <url>` lines and bucket them by the title's conventional prefix: `feat` → **Features**, `fix` → **Fixes**, everything else (including untyped titles) → **Other**. Breaking PRs (a `!` in the prefix) also get a **⚠ Breaking changes** section above the others, listed there only. Omit empty sections. Rules:
+2. **Regroup.** Parse `<generated>`'s `* <title> by @<user> in <url>` lines and bucket each PR by the **type of its commits**, not its title (PR titles are usually untyped; the commits follow `/commit-message`). One call per PR:
+   `gh api repos/<owner>/<repo>/pulls/<n>/commits --paginate --jq '[.[].commit.message] | if any(test("^[a-z]+(\\([^)]*\\))?!:|(^|\n)BREAKING[ -]CHANGE:")) then "breaking" elif any(test("^feat(\\([^)]*\\))?:")) then "feat" elif any(test("^fix(\\([^)]*\\))?:")) then "fix" else "other" end'`
+   The strongest type wins (breaking > feat > fix > other), so a PR with one `feat` commit and its review `fix` commits is a feature. If the PR title itself carries a stronger conventional prefix, that wins instead. `feat` → **Features**, `fix` → **Fixes**, everything else → **Other**; `breaking` PRs go in a **⚠ Breaking changes** section above the others, listed there only. Omit empty sections. Show the per-PR classification at the gate. Rules:
    - copy every PR line **verbatim**: regroup, never reword, never drop;
    - keep GitHub's `## New Contributors` section and the `**Full Changelog**: …` line unchanged, at the end;
    - add a 1–3 sentence plain summary at the top, derived from the PR titles only;

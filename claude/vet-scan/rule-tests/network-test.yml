@@ -1,0 +1,17 @@
+id: network
+valid:
+  - |-
+    const s = 'httpx'
+  - |-
+    const r = request.body
+invalid:
+  - |-
+    fetch(url)
+  - |-
+    window.fetch(url)
+  - |-
+    import https from 'node:https'
+  - |-
+    const n = require('net')
+  - |-
+    new WebSocket(u)

@@ -1,0 +1,13 @@
+id: decode-exec
+valid:
+  - |-
+    eval(code)
+  - |-
+    atob(s)
+invalid:
+  - |-
+    eval(atob(s))
+  - |-
+    new Function(Buffer.from(s, 'base64').toString())()
+  - |-
+    require(String.fromCharCode(99, 112))

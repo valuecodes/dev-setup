@@ -1,0 +1,7 @@
+id: long-blob
+language: TypeScript
+severity: warning
+message: Long encoded string (base64, hex or escapes)
+rule:
+  any: [{ kind: string }, { kind: template_string }]
+  regex: '[A-Za-z0-9+/_-]{200,}|(?:[0-9a-fA-F]{2}){100,}|(?:\\x[0-9a-fA-F]{2}){50,}|(?:\\u[0-9a-fA-F]{4}){50,}'

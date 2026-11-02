@@ -1,0 +1,17 @@
+id: env-dump
+language: TypeScript
+severity: error
+message: Reads the whole environment
+rule:
+  any:
+    - pattern: JSON.stringify(process.env)
+    - pattern: JSON.stringify(process.env, $$$)
+    - pattern: Object.keys(process.env)
+    - pattern: Object.entries(process.env)
+    - pattern: Object.values(process.env)
+    - pattern: Object.getOwnPropertyNames(process.env)
+    - pattern: Reflect.ownKeys(process.env)
+    - pattern: String(process.env)
+    - pattern: $U.inspect(process.env $$$)
+    - kind: for_in_statement
+      has: { field: right, regex: '^process\.env$' }

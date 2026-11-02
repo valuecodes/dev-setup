@@ -1,0 +1,11 @@
+id: url-literal
+valid:
+  - |-
+    const s = 'hello world'
+invalid:
+  - |-
+    const u = 'https://evil.example/x'
+  - |-
+    const ip = "10.0.0.1"
+  - |-
+    const w = `wss://host/${p}`

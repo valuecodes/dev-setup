@@ -1,0 +1,6 @@
+id: parse-error
+language: TypeScript
+severity: warning
+message: Code the parser could not read (rules may miss what is inside)
+rule:
+  kind: ERROR

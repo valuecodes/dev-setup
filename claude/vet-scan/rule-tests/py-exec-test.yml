@@ -1,0 +1,13 @@
+id: py-exec
+valid:
+  - |-
+    os.path.join(a, b)
+invalid:
+  - |-
+    subprocess.run(['ls'])
+  - |-
+    os.system('id')
+  - |-
+    import subprocess
+  - |-
+    __import__(name)

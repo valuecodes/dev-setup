@@ -1,0 +1,9 @@
+id: decode-call
+language: TypeScript
+severity: warning
+message: Decodes base64 or hex data
+rule:
+  any:
+    - pattern: Buffer.from($S, $E)
+      regex: '(?i)[''"`](base64|base64url|hex)[''"`]\s*\)$'
+    - pattern: atob($$$)

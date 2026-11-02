@@ -1,0 +1,13 @@
+id: decode-call
+valid:
+  - |-
+    Buffer.from(s, 'utf8')
+  - |-
+    Buffer.from(arr)
+invalid:
+  - |-
+    Buffer.from(s, 'base64')
+  - |-
+    Buffer.from(s, "hex")
+  - |-
+    atob(s)

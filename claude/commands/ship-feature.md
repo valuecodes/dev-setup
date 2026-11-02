@@ -2,7 +2,7 @@
 description: Build a feature end-to-end — execute the chat's plan in a worktree, commit, self+Codex review, fix, open PR, wait, address PR feedback
 argument-hint: "[path/to/plan.md | feature description]"
 disable-model-invocation: true
-allowed-tools: Read, Edit, Write, Glob, Grep, Task, TodoWrite, AskUserQuestion, Bash(git:*), Bash(gh:*), Bash(pnpm:*), Bash(node:*), Bash(ls:*), Bash(mkdir:*), Bash(sleep:*), Bash(cd:*), Bash(tail:*), Bash(head:*), Bash(grep:*), Bash(sed:*), Bash(sort:*), Bash(ssh-add:*), Bash(setsid:*), Bash(kill:*), Bash(fuser:*), Bash(ss:*), Bash(readlink:*), Bash(cp:*)
+allowed-tools: Read, Edit, Write, Glob, Grep, Task, TodoWrite, AskUserQuestion, Bash(git:*), Bash(gh:*), Bash(pnpm:*), Bash(node:*), Bash(ls:*), Bash(mkdir:*), Bash(sleep:*), Bash(cd:*), Bash(tail:*), Bash(head:*), Bash(grep:*), Bash(sed:*), Bash(sort:*), Bash(ssh-add:*), Bash(setsid:*), Bash(kill:*), Bash(ss:*), Bash(readlink:*), Bash(cp:*)
 ---
 
 Drive a feature from idea to addressed-PR in one run: take the spec → isolate it in a git worktree → build → commit → review (your own security/bug review **and** an independent Codex review) → fix and commit → open a PR → wait for automated review → triage and address that feedback.
@@ -11,12 +11,12 @@ Drive a feature from idea to addressed-PR in one run: take the spec → isolate 
 
 This command _owns_ the commits and pushes. It runs **fully automatically from spec through build** — auto-committing locally (the worktree branch is isolated, reversible, and unpushed) — and **gates only the three actions that leave the machine**: push + open PR (Gate C), the PR-feedback push (Gate D), and posting replies (Gate E). Never pass one of those gates without an affirmative `AskUserQuestion` answer.
 
-**Visibility without editor windows.** This command does **not** open VS Code windows. It cannot close them either: the `code` remote CLI has no close command, and WSL cannot reach the Windows-side window manager. So do not try. Instead, after the first green commit it restarts the web dev server on `http://localhost:3000/` from the worktree (Phase 4a), killing the previous one, so localhost always shows the latest build. The Gate C diff is the other place to see the work.
+**Visibility without editor windows.** This command does **not** open VS Code windows. It cannot close them either: the `code` remote CLI has no close command, and WSL cannot reach the Windows-side window manager. So do not try. Instead, after the first green commit it starts a dev server from the worktree (Phase 4a) and prints its URL. Each worktree has its own server, port, PID file and log, so parallel ship runs (one per session) never stop each other's servers. The Gate C diff is the other place to see the work.
 
 ## Hard rules
 
-- **Push only over the repo's HTTPS URL via the `gh` token** — never over the SSH `origin` (it would block on the key passphrase, which the non-interactive shell can't answer). Never `--no-verify`. Never force-push.
-- **Signing fallback (never block on it).** Decide signing once in Phase 0. If commit signing can't run non-interactively, make every commit with `-c commit.gpgsign=false` (unsigned) and warn the user once. As a safety net, if any commit still fails with a signing error, retry that exact commit once with `-c commit.gpgsign=false`. Never use `--no-verify` for this (it also skips hooks). Caveat: if the base branch _requires_ signed commits, unsigned pushes are rejected — surface that and STOP instead.
+- **Git over HTTPS only.** Every fetch, `ls-remote` and push uses the repo's HTTPS URL via the `gh` token. Never use the SSH `origin`: it blocks on the key passphrase, which the non-interactive shell can't answer. The user works over SSH, so the one exception is a **manual push**: when the branch changes `.github/workflows/**`, the gh token cannot push it (no Workflows permission), and the user runs the push you print (Phase 7). Never `--no-verify`. Never force-push.
+- **Commits are always unsigned.** Every command that creates a commit (`commit`, `merge`, `rebase`, `cherry-pick`) runs as `git -c commit.gpgsign=false …`. Do not check `ssh-add` and do not warn about it. Never use `--no-verify` for this (it also skips hooks). If the base branch _requires_ signed commits (Phase 0 step 7), unsigned pushes are rejected: STOP instead.
 - Never **push** or post without passing the relevant gate (C / D / E); local commits are automatic (the worktree branch is unpushed and reversible). Never `--no-verify`. Never force-push.
 - Never post PR replies without Gate E. Never reply to your own past comments.
 - **Emit `gh`/`git` commands so the allowlist matches.** Write each as a single command that _starts with the tool name_ (`gh api …`, `git -C … …`) with literal values inlined. Do NOT hoist values into leading `VAR=…;` assignment statements and do NOT use a leading `VAR=val gh …` env prefix — Claude Code splits on `;`/newlines and matches each sub-command independently, and it does not strip env-var prefixes, so either form defeats `Bash(gh:*)`/`Bash(git:*)` and forces a needless permission prompt. (Process wrappers `timeout`/`time`/`nice`/`nohup`/`stdbuf` are fine — those are stripped.) Any piped helper needs its own rule too: `gh api … | head` requires both `gh` and `head` (both already allowed here).
@@ -41,13 +41,23 @@ This is the one definition; `/ship-plan`, `/ship-issue` and `/plan-to-issues` re
 
 ## Phase 0 — Pre-flight (read-only, fail fast)
 
-1. `gh auth status` must succeed. If it fails, STOP and tell the user to run `gh auth login` (a fine-grained PAT scoped to this repo works — it needs Contents R/W, Pull requests R/W, Metadata R, Commit statuses R, Actions R, and Workflows R/W only if the feature touches `.github/workflows/**`). Do not continue.
+1. `gh auth status` must succeed. If it fails, STOP and tell the user to run `gh auth login` (a fine-grained PAT scoped to this repo works — it needs Contents R/W, Pull requests R/W, Metadata R, Commit statuses R, Actions R; no Workflows permission, because the user pushes workflow changes over SSH, Phase 7). Do not continue.
 2. Derive the HTTPS URL: `gh repo view --json url -q .url` → append `.git` → `<https-url>`. Also capture `<owner>`/`<repo>` (`gh repo view --json owner,name`).
 3. Confirm the gh credential helper authenticates **non-interactively**: `git ls-remote <https-url> HEAD`. If it prompts or fails, STOP with the fix. NOTE: this proves read access + no passphrase prompt only — it does NOT prove push permission. Write access is genuinely verified at the first push (Gate C); if the PAT lacks `Contents: write`, that push fails with a 403 and the command stops there.
 4. Toolchain: `node --version` must match `.nvmrc`. If not, STOP and tell the user to `nvm use`.
 5. Capture `git status --porcelain` in the main checkout. If there's unrelated WIP, warn (the worktree isolates the new work, so it's safe to proceed, but flag it).
 6. Base branch = `main` if it exists, else `master`. If neither, STOP.
-7. **Signing pre-flight.** If `git config --get commit.gpgsign` is `true`, check signing can run non-interactively. For `gpg.format=ssh`: `ssh-add -l` must succeed and list a key. If it can't (no agent / `SSH_AUTH_SOCK` unset), set `SIGN=off` for this run — all commits use `git -c commit.gpgsign=false commit …` — and warn once: "Commits will be UNSIGNED — the signing key is passphrase-protected and no ssh-agent is available non-interactively. To keep them verified, run `eval \"$(ssh-agent)\" && ssh-add ~/.ssh/id_ed25519` before `/ship-feature`." If signing works, commit normally. If the base branch requires signed commits and `SIGN=off`, STOP.
+   **Update the local base before anything reads the code** (the Codex plan review in Phase 1 runs in the main checkout). Run `git -C <repo-root> fetch <https-url> <base>`, then:
+   - main checkout is on `<base>` (`git -C <repo-root> rev-parse --abbrev-ref HEAD`) → `git -C <repo-root> merge --ff-only FETCH_HEAD`. Uncommitted work is fine: git refuses only if the update would overwrite it.
+   - on another branch → `git -C <repo-root> fetch <https-url> <base>:<base>` (fast-forwards the local ref without touching the checkout).
+
+   Never rewrite or merge yourself. If either refuses (the local base has diverged from the remote, or uncommitted work would be overwritten), STOP with git's reason and the fix for the user (commit, stash or move that work; reconcile the local base), because Phase 1 and the callers' local surveys would otherwise read stale code. If the main checkout is on another branch, its files are that branch, not `<base>`: say so once, since the Codex plan review reads them. Print `Local <base> at <short sha>`.
+
+7. **Signing.** Always `SIGN=off`: every commit is unsigned (hard rules). Check what the gh token can see, each as its own call:
+   - `gh api repos/<owner>/<repo>/rules/branches/<base> --jq '[.[].type]'` (rulesets). If it contains `required_signatures`, STOP: unsigned commits would be rejected.
+   - `gh api repos/<owner>/<repo>/branches/<base> --jq .protection.enabled` (classic branch protection; its own endpoint returns 403 to the token, so never call it). If `true`, its signed-commit setting cannot be read: warn once that the PR may be blocked at merge for unsigned commits.
+
+   Phase 7 repeats the rulesets check for the PR branch before pushing.
 
 ## Phase 1 — Establish the spec (no gate)
 
@@ -89,7 +99,7 @@ install ignores it.
 check-ignore .worktrees` doesn't already match, append `.worktrees/` to
    `<repo-root>/.git/info/exclude`. This keeps the worktree from showing as untracked. Do the
    same for `.plans/` (`mkdir -p <repo-root>/.plans`). It holds the unit folders and the dev
-   server's PID and log (Phase 4a). It is not under `.claude/` or `.git/`, because Claude Code
+   servers' PID and log files (`.plans/dev/`, Phase 4a). It is not under `.claude/` or `.git/`, because Claude Code
    treats both as protected paths and prompts on every write there.
 2. Branch from the _remote_ base, not the possibly-stale local ref:
    ```bash
@@ -127,21 +137,25 @@ Implement per the agreed plan. Follow repo standards from `AGENTS.md`: TS strict
 2. Stage everything (`git add -A`), then show the **full** preview including untracked files: `git diff --cached` + `git status` (plain `git diff` omits new files).
 3. Propose a semantic commit message `<type>: <subject>` (`feat`/`fix`/`docs`/`style`/`refactor`/`test`/`chore`, no scope, imperative, ≤72 chars).
 
-**Commit (no gate).** Commit automatically — the diff above is informational only; this is a local, unpushed commit on the isolated worktree branch and is reviewable in full at Gate C: `git commit -m "<msg>"` (already staged; prepend `-c commit.gpgsign=false` if Phase 0 set `SIGN=off`). Never `--no-verify`.
+**Commit (no gate).** Commit automatically — the diff above is informational only; this is a local, unpushed commit on the isolated worktree branch and is reviewable in full at Gate C: `git -C ".worktrees/<slug>" -c commit.gpgsign=false commit -m "<msg>"` (already staged). Never `--no-verify`.
 
 Then run **Phase 4a**, then continue with Phase 5.
 
-### Phase 4a — Restart the dev server from this worktree
+### Phase 4a — Start the dev server from this worktree
 
 This is best effort. Never fail or pause the ship over the dev server. On any problem, print the tail of the log and move on.
 
-1. **Stop the previous server.** If `.plans/dev.pid` exists, run `kill -- -<pid>` and ignore errors. The server was started with `setsid`, so it leads its own process group and this also stops Vite's children. Then run `fuser -k 3000/tcp` to clear any other listener. `apps/web`'s dev script is `vite --port 3000` without `strictPort`, so a busy port would silently move Vite to 3001. Confirm with `ss -ltnp` that nothing listens on `:3000`.
-2. **Start it detached** so it outlives this session. Run it from the worktree with pnpm's `-C` flag (no `cd`, no `$VAR`):
+**Parallel-safe by construction.** Other sessions may be shipping other features at the same time, each with its own server. So this phase only ever touches **this worktree's** server: its files are `.plans/dev/<wt>.pid` and `.plans/dev/<wt>.log`, where `<wt>` is the worktree's directory name (`<slug>`). Never kill by port (`fuser -k`), never kill a PID from another worktree's file, and never pin a port that another run may hold.
+
+1. **Resolve the app.** `grep -l '"dev"' apps/*/package.json` in the worktree. If exactly one matches, read its `name` and its `dev` script. If none or several match, skip this phase, print why, and continue. If the `dev` script runs `tauri` (a desktop app: it compiles Rust, opens a native window and needs one fixed port, so parallel runs would collide), skip it too and print `Dev: not started (desktop app); run pnpm -C .worktrees/<slug> --filter <name> dev to look at it.`
+2. **Stop this worktree's previous server** (a resumed run). If `.plans/dev/<wt>.pid` exists, run `kill -- -<pid>` and ignore errors. The server was started with `setsid`, so it leads its own process group and this also stops Vite's children.
+3. **Start it detached** so it outlives this session. `mkdir -p .plans/dev`, then run it from the worktree with pnpm's `-C` flag (no `cd`, no `$VAR`):
    ```bash
-   setsid nohup pnpm -C .worktrees/<slug> --filter web dev > .plans/dev.log 2>&1 &
+   setsid nohup pnpm -C .worktrees/<slug> --filter <name> dev > .plans/dev/<wt>.log 2>&1 &
    ```
-3. Launch `sleep 5` as a **background** Bash command. On resume, run `ss -ltnp` and read the `pid=` of the `:3000` listener. Write that PID to `.plans/dev.pid` with the Write tool. If nothing listens on `:3000`, print `tail -40 .plans/dev.log` and continue.
-4. Print `Dev: http://localhost:3000/`. If the spec names an example to look at, append `?code=<example>`. Vite hot-reloads the fix commits made later in the same worktree. The next ship run replaces the server.
+   If the app's Vite port is taken (another run's server), Vite moves to the next free port unless the config sets `strictPort`. With `strictPort` the start fails on a busy port: print the log tail and continue.
+4. Launch `sleep 5` as a **background** Bash command. On resume, read the URL from the log: `grep -m1 -o 'http://localhost:[0-9]*/' .plans/dev/<wt>.log`. Run `ss -ltnp`, find the listener on that port, and write its `pid=` to `.plans/dev/<wt>.pid` with the Write tool. If the log has no URL, print `tail -40 .plans/dev/<wt>.log` and continue.
+5. Print `Dev: <url>`. If the spec names an example to look at, append `?code=<example>`. Vite hot-reloads the fix commits made later in the same worktree. The server runs until its worktree is cleaned up (Final summary hint, or the merged-worktree cleanup in `/ship-plan` and `/ship-issue`).
 
 ## Phase 5 — Review: self + Codex (auto)
 
@@ -163,24 +177,37 @@ This is best effort. Never fail or pause the ship over the dev server. On any pr
 2. Re-run the full quality-gate loop (Phase 4 step 1) until green.
 3. If nothing needed fixing, say so and skip to Phase 7. Otherwise stage (`git add -A`) and show `git diff --cached` + `git status`, with a message like `fix: address review findings`.
 
-**Commit (no gate).** Commit the fixes automatically (local, unpushed — reviewable at Gate C): `git commit -m "<msg>"` (prepend `-c commit.gpgsign=false` if Phase 0 set `SIGN=off`). Never `--no-verify`.
+**Commit (no gate).** Commit the fixes automatically (local, unpushed — reviewable at Gate C): `git -C ".worktrees/<slug>" -c commit.gpgsign=false commit -m "<msg>"`. Never `--no-verify`.
 
 ## Phase 7 — Push + open PR (Gate C)
 
-1. Pre-flight: current branch is not the base; `gh pr view --json url,state` shows no existing PR for `feat/<slug>` (if one exists, print its URL and skip to Phase 8).
+1. Pre-flight: current branch is not the base; `gh pr view --json url,state` shows no existing PR for `<branch>` (if one exists, print its URL and skip to Phase 8).
 2. Generate, from `git diff <base_sha>...HEAD` and `git log <base_sha>..HEAD --oneline`:
    - **Title**: plain-English sentence, capitalized, present tense, ≤72 chars, no trailing period (NOT `<type>: <subject>`).
    - **Body**: `### What` (2–4 bullets, lead with the why), `### How to test` (commands one per line, only scripts that exist in `package.json`), `### Security review` (single line `No security-impacting changes.` unless an item is actually affected, then the checklist).
 3. Show title + body in two fenced blocks.
+4. **Push mode.** `git -C ".worktrees/<slug>" diff --name-only <base_sha>...HEAD`. If any path starts with `.github/workflows/`, this is a **manual push**: the gh token has no Workflows permission, so the user pushes over SSH. Otherwise the push is automatic over HTTPS.
+5. **Branch rules.** `gh api repos/<owner>/<repo>/rules/branches/<branch> --jq '[.[].type]'`. If it contains `required_signatures`, STOP before pushing (the commits are unsigned).
 
-**Gate C.** `AskUserQuestion` (`Push and open this PR?`): `Push + open PR (Recommended)` / `Edit first` / `Cancel`. On affirmative, first write the body with the **Write tool** to `<unit>/pr-body.md` (in the workspace and locally ignored, so it's never tracked or pushed; fixed name so no timestamp call is needed), then:
+`<branch>` below is the branch Phase 2 created (`feat/<slug>` here; a caller such as `/ship-deps` names its own, e.g. `deps/<date>`), and `.worktrees/<slug>` is its worktree. Use the resolved name in every push, check and PR command.
+
+**Gate C.** `AskUserQuestion` (`Push and open this PR?`): `Push + open PR (Recommended)` / `Edit first` / `Cancel`; for a manual push, `I'll push, then open PR (Recommended)` / `Edit first` / `Cancel`. On affirmative, first write the body with the **Write tool** to `<unit>/pr-body.md` (in the workspace and locally ignored, so it's never tracked or pushed; fixed name so no timestamp call is needed). Then push, and only after the push is confirmed, create the PR. Never send the two in parallel.
+
+- **Automatic push:** `git -C ".worktrees/<slug>" push <https-url> HEAD:<branch>`. If it is rejected for the workflow scope, switch to the manual push below. If it 403s otherwise, the PAT lacks `Contents: write`: STOP and report.
+- **Manual push:** print the command for the user to run in their own terminal, with the absolute worktree path and the branch inlined:
+  ```
+  git -C <repo-root>/.worktrees/<slug> push origin HEAD:<branch>
+  ```
+  Then `AskUserQuestion` (`Did the push succeed?`): `Pushed (Recommended)` / `Cancel`. On `Pushed`, check `git ls-remote <https-url> refs/heads/<branch>` equals `git -C ".worktrees/<slug>" rev-parse HEAD`. If not, say what the remote has and ask again.
+- **Rejected for unsigned commits** (either push, or later a merge blocked for the same reason): STOP. Tell the user to re-sign in their own terminal with `git -C <repo-root>/.worktrees/<slug> rebase --exec "git commit --amend --no-edit -S" <base_sha>` and push it themselves (`--force-with-lease` if the branch is already on the remote). Never re-sign or force-push yourself.
+
+Then:
 
 ```bash
-git -C ".worktrees/<slug>" push <https-url> HEAD:feat/<slug>
-gh pr create --base <base> --head feat/<slug> --title "<title>" --body-file <unit>/pr-body.md
+gh pr create --base <base> --head <branch> --title "<title>" --body-file <unit>/pr-body.md
 ```
 
-Use `--body-file` (not `--body "$(cat …)"`) — a `$(…)` command substitution forces a permission prompt every run regardless of the allowlist, and `--body-file` preserves newlines anyway. Print the PR URL. If the push 403s, the PAT lacks `Contents: write` — STOP and report.
+Use `--body-file` (not `--body "$(cat …)"`) — a `$(…)` command substitution forces a permission prompt every run regardless of the allowlist, and `--body-file` preserves newlines anyway. Print the PR URL.
 
 ## Phase 8 — Wait for automated review (bounded polling)
 
@@ -222,7 +249,7 @@ Use `--body-file` (not `--body "$(cat …)"`) — a `$(…)` command substitutio
 
 3. Apply fixes for valid + ci-failure (if any) in the worktree; re-run the quality gates until green.
 
-**Gate D** (only if there ARE code fixes). `AskUserQuestion` (`Commit + push the fixes?`): `Commit + push (Recommended)` / `Edit fixes` / `Cancel`. On affirmative → `git -C ".worktrees/<slug>" add -A`, commit (`fix: address PR review feedback`), `git -C ".worktrees/<slug>" push <https-url> HEAD:feat/<slug>`. Capture the new SHA (`git -C ".worktrees/<slug>" rev-parse HEAD`).
+**Gate D** (only if there ARE code fixes). `AskUserQuestion` (`Commit + push the fixes?`): `Commit + push (Recommended)` / `Edit fixes` / `Cancel`. On affirmative → `git -C ".worktrees/<slug>" add -A`, commit unsigned (`fix: address PR review feedback`), then push with the Phase 7 push mode (re-check it: the fixes may be the first change to `.github/workflows/`): automatic → `git -C ".worktrees/<slug>" push <https-url> HEAD:<branch>`; manual → print the SSH push command, ask `Did the push succeed?` and verify with `git ls-remote` as in Phase 7. Capture the new SHA (`git -C ".worktrees/<slug>" rev-parse HEAD`).
 
 4. Draft replies: `valid` → `Fixed in <sha>: <one line>.`; `question` → answer directly; `approved` → `👍 thanks`. Skip `ci-failure` (CI re-runs after push) and `noise`.
 
@@ -236,6 +263,6 @@ Only skip to the summary if there is genuinely nothing actionable _and_ nothing 
 
 ## Final summary
 
-First write the hand-off retro notes (see **Retro notes**). Then print: worktree path + branch; commit SHA(s); PR URL; `Dev: http://localhost:3000/` (or that it is not running); findings (self vs Codex, by severity); fixes applied; PR comments triaged/fixed/replied/resolved; quality-gate status.
+First write the hand-off retro notes (see **Retro notes**). Then print: worktree path + branch; commit SHA(s); PR URL; `Dev: <url>` from Phase 4a (or that it is not running); findings (self vs Codex, by severity); fixes applied; PR comments triaged/fixed/replied/resolved; quality-gate status.
 
-**Worktree (no gate).** Always **keep** the worktree — never auto-remove it. End the summary with the manual cleanup hint for when the user is done: `git worktree remove .worktrees/<slug>`. Run it from `<repo-root>`, and first stop the dev server if it serves from that worktree: `kill -- -<pid from .plans/dev.pid>`. The tree is clean after the commit, so add `--force` only if it refuses because of leftover ignored or build files. **Never delete the `feat/<slug>` branch** — the pushed branch and PR depend on it.
+**Worktree (no gate).** Always **keep** the worktree — never auto-remove it. End the summary with the manual cleanup hint for when the user is done: `git worktree remove .worktrees/<slug>`. Run it from `<repo-root>`, and first stop that worktree's dev server if it has one: `kill -- -<pid from .plans/dev/<slug>.pid>`. The tree is clean after the commit, so add `--force` only if it refuses because of leftover ignored or build files. **Never delete the `feat/<slug>` branch** — the pushed branch and PR depend on it.

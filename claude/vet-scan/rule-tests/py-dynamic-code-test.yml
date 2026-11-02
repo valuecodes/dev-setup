@@ -1,0 +1,9 @@
+id: py-dynamic-code
+valid:
+  - |-
+    evaluate(x)
+invalid:
+  - |-
+    exec(base64.b64decode(s))
+  - |-
+    eval(s)

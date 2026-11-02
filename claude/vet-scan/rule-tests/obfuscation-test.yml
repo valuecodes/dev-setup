@@ -1,0 +1,9 @@
+id: obfuscation
+valid:
+  - |-
+    const _0 = 1
+invalid:
+  - |-
+    const _0x3f2a1b = ['a']
+  - |-
+    const s = '\x63\x68\x69\x6c\x64\x5f\x70\x72\x6f'

@@ -1,0 +1,9 @@
+# ast-grep config for ~/.claude/scripts/vet-scan.ts. The script builds its own config at run
+# time (adding Tsx copies of the TypeScript rules); this one is for `ast-grep test`.
+ruleDirs:
+  - rules
+testConfigs:
+  - testDir: rule-tests
+languageGlobs:
+  typescript: ["*.js", "*.cjs", "*.mjs"]
+  tsx: ["*.jsx"]

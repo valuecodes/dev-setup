@@ -1,0 +1,6 @@
+id: py-parse-error
+valid:
+  - |-
+    x = 1
+invalid:
+  - "def (:"

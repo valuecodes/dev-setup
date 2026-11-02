@@ -1,0 +1,20 @@
+id: sh-download-exec
+language: Bash
+severity: error
+message: Downloads and runs code, decodes data, or evals
+rule:
+  any:
+    - kind: pipeline
+      all:
+        - has: { kind: command, regex: '^(sudo\s+)?(curl|wget)\b' }
+        - has:
+            {
+              kind: command,
+              regex: '^(sudo\s+)?((ba|z|da)?sh|python3?|node|perl|ruby)\b',
+            }
+    - kind: command
+      regex: '^(sudo\s+)?(ba|z|da)?sh\s+<\(\s*(curl|wget)\b'
+    - kind: command
+      regex: '\bbase64\s+(-d|--decode|-D)\b'
+    - kind: command
+      regex: '^eval\b'

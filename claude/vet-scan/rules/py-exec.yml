@@ -1,0 +1,15 @@
+id: py-exec
+language: Python
+severity: warning
+message: Runs processes or imports modules by computed name
+rule:
+  any:
+    - pattern: subprocess.$F($$$)
+    - pattern: os.$F($$$)
+      regex: '^os\.(system|popen|exec\w*|spawn\w*|fork|forkpty|posix_spawn\w*)\s*\('
+    - pattern: __import__($$$)
+    - pattern: importlib.import_module($$$)
+    - kind: import_statement
+      regex: '\b(subprocess|pty|ctypes)\b'
+    - kind: import_from_statement
+      regex: '^from\s+(subprocess|pty|ctypes)\b|^from\s+os\s+import\s+.*\b(system|popen|exec\w*|spawn\w*)\b'

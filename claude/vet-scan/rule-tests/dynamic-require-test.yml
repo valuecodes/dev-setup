@@ -1,0 +1,15 @@
+id: dynamic-require
+valid:
+  - |-
+    require('fs')
+  - |-
+    import('./a.js')
+  - |-
+    require(`lodash`)
+invalid:
+  - |-
+    require(name)
+  - |-
+    require('./' + name)
+  - |-
+    import(`./${x}.js`)

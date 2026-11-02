@@ -1,0 +1,19 @@
+id: dynamic-require
+language: TypeScript
+severity: warning
+message: Loads a module whose name is computed at run time
+rule:
+  kind: call_expression
+  has:
+    {
+      field: function,
+      regex: '^(require|import|module\.require|__non_webpack_require__)$',
+    }
+  not:
+    has:
+      field: arguments
+      has:
+        any:
+          - kind: string
+          - kind: template_string
+            not: { has: { kind: template_substitution } }

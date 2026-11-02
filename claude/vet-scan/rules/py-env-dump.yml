@@ -1,0 +1,14 @@
+id: py-env-dump
+language: Python
+severity: error
+message: Reads the whole environment
+rule:
+  any:
+    - pattern: dict(os.environ)
+    - pattern: str(os.environ)
+    - pattern: os.environ.items()
+    - pattern: os.environ.keys()
+    - pattern: os.environ.values()
+    - pattern: json.dumps(os.environ $$$)
+    - kind: for_statement
+      has: { field: right, regex: '^os\.environ$' }

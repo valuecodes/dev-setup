@@ -1,0 +1,11 @@
+id: py-dynamic-code
+language: Python
+severity: error
+message: Evaluates code built at run time
+rule:
+  any:
+    - pattern: eval($$$)
+    - pattern: exec($$$)
+    - pattern: compile($$$)
+    - pattern: marshal.loads($$$)
+    - pattern: pickle.loads($$$)

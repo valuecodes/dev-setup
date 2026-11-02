@@ -1,0 +1,13 @@
+id: network
+language: TypeScript
+severity: warning
+message: Network access
+rule:
+  any:
+    - any: [{ kind: string }, { kind: template_string }]
+      regex: '^.(node:)?(http|https|http2|net|dns|tls|dgram|undici|axios|node-fetch|cross-fetch|isomorphic-fetch|socket\.io-client)(/.*)?.$'
+    - pattern: fetch($$$)
+    - pattern: $O.fetch($$$)
+    - pattern: new XMLHttpRequest($$$)
+    - pattern: new WebSocket($$$)
+    - pattern: navigator.sendBeacon($$$)

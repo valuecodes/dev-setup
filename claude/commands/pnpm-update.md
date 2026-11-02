@@ -6,6 +6,8 @@ argument-hint: [--dev | --prod]
 
 Survey outdated packages in this pnpm workspace, research what each update is, propose a targeted upgrade plan, get my confirmation, then run the update. Do NOT commit.
 
+For a vetted update PR driven by the maintenance dashboard, use `/ship-deps` instead.
+
 Arguments: `$ARGUMENTS` — optional. Pass `--dev` or `--prod` through to `pnpm outdated` to scope the check.
 
 ## 1. Pre-flight
@@ -22,6 +24,8 @@ pnpm outdated -r --format json $ARGUMENTS
 ```
 
 If the output is empty / `{}`, say "Everything is up to date." and stop.
+
+If `pnpm-workspace.yaml` lists packages under `updateConfig.ignoreDependencies`, `pnpm up --latest` skips them. Keep them out of the upgrade command; show them as `manual` rows instead (e.g. `@types/node` stays on the `.nvmrc` major, so propose the newest version within that major for a hand edit of the catalog entry).
 
 Parse the JSON. For each entry capture: package name, current version, latest version, type (`dependencies` / `devDependencies`), and which workspace(s) it appears in.
 

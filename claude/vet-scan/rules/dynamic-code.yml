@@ -1,0 +1,31 @@
+id: dynamic-code
+language: TypeScript
+severity: error
+message: Evaluates code built at run time
+rule:
+  any:
+    - pattern: eval($$$)
+    - pattern: $O.eval($$$)
+    - pattern: (0, eval)($$$)
+    - pattern: new Function($$$)
+    - pattern: Function($$$)
+    - pattern: $M._compile($$$)
+    - any: [{ kind: string }, { kind: template_string }]
+      regex: "^.(node:)?(vm|inspector).$"
+    - kind: call_expression
+      all:
+        - has:
+            {
+              field: function,
+              regex: "^(setTimeout|setInterval|setImmediate)$",
+            }
+        - has:
+            field: arguments
+            has:
+              nthChild: 1
+              any:
+                [
+                  { kind: string },
+                  { kind: template_string },
+                  { kind: binary_expression },
+                ]

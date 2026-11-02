@@ -1,0 +1,11 @@
+id: child-process
+language: TypeScript
+severity: warning
+message: Loads a module that runs processes or threads, or a native binding
+rule:
+  any:
+    - any: [{ kind: string }, { kind: template_string }]
+      regex: "^.(node:)?(child_process|worker_threads|cluster).$"
+    - pattern: process.binding($$$)
+    - pattern: process._linkedBinding($$$)
+    - pattern: process.dlopen($$$)

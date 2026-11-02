@@ -1,0 +1,11 @@
+id: sh-download-exec
+valid:
+  - |-
+    curl -fsSL https://x/a -o a
+invalid:
+  - |-
+    curl -fsSL https://x/i.sh | bash
+  - |-
+    echo aGk= | base64 -d > f
+  - |-
+    eval "$X"

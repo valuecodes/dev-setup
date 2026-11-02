@@ -1,0 +1,6 @@
+id: sh-parse-error
+valid:
+  - |-
+    echo hi
+invalid:
+  - "if then fi ((("

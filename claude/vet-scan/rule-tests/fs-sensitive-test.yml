@@ -1,0 +1,11 @@
+id: fs-sensitive
+valid:
+  - |-
+    readFileSync('./config.json')
+invalid:
+  - |-
+    readFileSync(join(home, '.npmrc'))
+  - |-
+    readFileSync(home + '/.ssh/id_rsa')
+  - |-
+    const p = 'Local State'

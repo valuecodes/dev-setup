@@ -1,0 +1,9 @@
+id: env-copy
+valid:
+  - |-
+    const e = { ...other }
+invalid:
+  - |-
+    spawn(cmd, { env: { ...process.env, A: '1' } })
+  - |-
+    Object.assign({}, process.env)
