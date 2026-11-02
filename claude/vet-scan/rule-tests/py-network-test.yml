@@ -1,0 +1,11 @@
+id: py-network
+valid:
+  - |-
+    import os
+invalid:
+  - |-
+    import requests
+  - |-
+    from urllib.request import urlopen
+  - |-
+    u = "http://1.2.3.4/x"

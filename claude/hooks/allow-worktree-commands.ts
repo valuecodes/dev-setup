@@ -8,7 +8,15 @@
 //   pnpm -C <path>/.worktrees/<name> [--filter <pkg>] <lint|typecheck|build|format|...> [args]
 //   git  -C <path>/.worktrees/<name> <status|diff|log|show> [args]
 //   git  -C <path>/.worktrees/<name> add [args]   (no force / interactive flags)
-//   git  -C <path>/.worktrees/<name> [-c commit.gpgsign=false] commit -m "<msg>" [-m "<msg>"]...
+//   git  -C <path>/.worktrees/<name> [-c commit.gpgsign=false] commit [-q] -m "<msg>" [-m "<msg>"]...
+//   git [-C <repo>] <status|diff|log|show|rev-parse> [args]   (<repo>: see repoDir below)
+//   git [-C <repo>] grep [-<flags>] '<pattern>' [-- <pathspec>...]
+//   git [-C <repo>] branch --list <ref> | branch -vv | branch --show-current
+//   git [-C <repo>] remote get-url <name>
+//   git [-C <root>] worktree add .worktrees/<name> -b <branch> [<sha>] | worktree list
+//   git [-C <repo>] fetch|ls-remote <https://github.com/o/r[.git] | https origin> [<ref>...]
+//   gh <pr view|pr diff|pr checks|pr list|run view|run list|issue view|issue list|
+//       release view|release list|repo view> [args]
 //   cp -al [<path>/]node_modules <path>/.worktrees/<name>[/<path>]/node_modules
 //   gh api <endpoint> [--paginate] [--slurp] [--jq '<expr>']            (GET only)
 //   gh api graphql -f|-F key=value... [--paginate] [--jq '<expr>']      (no mutations, no @file)
@@ -19,10 +27,13 @@
 //
 // A segment after `|` must be a filter: head/tail [-N], grep '<pattern>' (no files), wc,
 // sort, uniq [-c], jq '<filter>'. `2>&1` is allowed anywhere. Two whole-command forms are
-// matched literally: the dev-server start and the settings.json validity check.
+// matched literally: the settings.json validity check, and the dev-server start
+//   setsid nohup pnpm -C <path>/.worktrees/<name> --filter <pkg> dev > [<cwd>/].plans/dev[/<name>].log 2>&1 &
+// (the log's real parent must be <cwd>/.plans or <cwd>/.plans/dev, and not a symlink).
 
-import { readFileSync, realpathSync, statSync } from "node:fs";
-import { isAbsolute, join, sep } from "node:path";
+import { execFileSync } from "node:child_process";
+import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 
 type Word = { raw: string; text: string; plain: boolean };
 type Segment = { words: Word[]; piped: boolean };
@@ -36,8 +47,36 @@ const PNPM_FILTER = "[A-Za-z0-9@/._-]+";
 // Whole-command literal forms
 
 const DEV_SERVER = new RegExp(
-  `^setsid nohup pnpm -C ${WORKTREE} --filter ${PNPM_FILTER} dev > \\.plans/dev\\.log 2>&1 &$`
+  `^setsid nohup pnpm -C ${WORKTREE} --filter ${PNPM_FILTER} dev > ([A-Za-z0-9._/-]+) 2>&1 &$`
 );
+const DEV_LOG = new RegExp(`^\\.plans/dev(?:\\.log|/${SEG}\\.log)$`);
+
+// The log must land in <cwd>/.plans or <cwd>/.plans/dev for real (no symlinked folder or
+// symlinked log file pointing elsewhere).
+function devServer(cmd: string, ctx: Ctx): string | false {
+  const target = DEV_SERVER.exec(cmd)?.[1];
+  if (!target) return false;
+  const prefix = ctx.cwd.replace(/\/+$/, "") + "/";
+  const rel = target.startsWith(prefix) ? target.slice(prefix.length) : target;
+  if (!DEV_LOG.test(rel)) return false;
+  try {
+    const root = realpathSync(ctx.cwd);
+    const parent = realpathSync(join(ctx.cwd, dirname(rel)));
+    if (
+      parent !== join(root, ".plans") &&
+      parent !== join(root, ".plans", "dev")
+    )
+      return false;
+    try {
+      if (!lstatSync(join(ctx.cwd, rel)).isFile()) return false;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") return false;
+    }
+    return "dev server start in a worktree";
+  } catch {
+    return false;
+  }
+}
 const SETTINGS_CHECK = `node -e 'JSON.parse(require("fs").readFileSync(process.env.HOME+"/.claude/settings.json","utf8")); console.log("valid")'`;
 
 // ---------------------------------------------------------------------------------------
@@ -175,8 +214,9 @@ const GIT_ARG = "[A-Za-z0-9._/=:@,+~^%-]+";
 const GIT_READ = new RegExp(
   `^git -C ${WORKTREE} (?:status|diff|log|show)(?: ${GIT_ARG})*$`
 );
-// --output writes a file anywhere; --no-index lets diff read any file on disk.
-const GIT_READ_BLOCKED = /^--(?:output|no-index)/;
+// --output writes a file anywhere; --no-index lets diff read any file on disk; -O /
+// --open-files-in-pager makes git grep run a command.
+const GIT_READ_BLOCKED = /^(?:--(?:output|no-index|open-files-in-pager)|-O)/;
 const gitRead = (s: Segment) =>
   GIT_READ.test(joined(s)) &&
   !s.words.some((w) => GIT_READ_BLOCKED.test(w.text)) &&
@@ -194,10 +234,179 @@ const gitAdd = (s: Segment) =>
 // Only -m messages in double quotes (the tokenizer already refused $, backtick and \ in
 // them), and only the signing fallback as -c (any other -c could set core.hooksPath).
 const GIT_COMMIT = new RegExp(
-  `^git -C ${WORKTREE}(?: -c commit\\.gpgsign=false)? commit(?: -m "[^"\\n]*")+$`
+  `^git -C ${WORKTREE}(?: -c commit\\.gpgsign=false)? commit(?: -q| --quiet)?(?: -m "[^"\\n]*")+$`
 );
 const gitCommit = (s: Segment) =>
   GIT_COMMIT.test(joined(s)) && "local git commit in a worktree";
+
+// The session's own repo: the cwd root (has .git), or one of its .worktrees/<name>, where
+// .worktrees is a real folder and <name>/.git points into <cwd>/.git/worktrees/. Rules out
+// nested foreign repos (their config could run code) and symlinks out of the project.
+function repoDir(p: string, ctx: Ctx, rootOnly = false): boolean {
+  try {
+    const root = realpathSync(ctx.cwd);
+    statSync(join(root, ".git"));
+    const real = realpathSync(resolve(ctx.cwd, p));
+    if (real === root) return true;
+    if (rootOnly) return false;
+    const wts = join(root, ".worktrees");
+    if (realpathSync(wts) !== wts || dirname(real) !== wts) return false;
+    const dotGit = join(real, ".git");
+    if (!lstatSync(dotGit).isFile()) return false;
+    const gitdir = /^gitdir: (.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1];
+    if (!gitdir) return false;
+    const target = realpathSync(resolve(real, gitdir.trim()));
+    return target.startsWith(join(root, ".git", "worktrees") + sep);
+  } catch {
+    return false;
+  }
+}
+
+// Splits `git [-C <dir>] <rest...>`; the dir (or the cwd) must pass repoDir.
+function gitIn(
+  s: Segment,
+  ctx: Ctx,
+  rootOnly = false
+): { dir: string; rest: Word[] } | null {
+  const w = s.words;
+  if (w[0]?.raw !== "git") return null;
+  if (w[1]?.raw === "-C") {
+    const d = w[2];
+    if (!plainMatch(d, PATH) || !repoDir(d!.text, ctx, rootOnly)) return null;
+    return { dir: resolve(ctx.cwd, d!.text), rest: w.slice(3) };
+  }
+  return repoDir(".", ctx, rootOnly)
+    ? { dir: ctx.cwd, rest: w.slice(1) }
+    : null;
+}
+
+const GIT_WORD = new RegExp(`^${GIT_ARG}$`);
+const gitWord = (w: Word) =>
+  (plainMatch(w, GIT_WORD) || singleQuoted(w)) &&
+  !GIT_READ_BLOCKED.test(w.text);
+const REF = /^[A-Za-z0-9._/][A-Za-z0-9._/-]*$/;
+
+function gitRepoRead(s: Segment, ctx: Ctx): string | false {
+  const g = gitIn(s, ctx);
+  if (!g) return false;
+  const [sub, ...a] = g.rest;
+  const r = a.map((w) => w.raw).join(" ");
+  if (/^(?:status|diff|log|show|rev-parse)$/.test(sub?.raw ?? ""))
+    return a.every(gitWord) && "read-only git in the session repo";
+  if (sub?.raw === "grep") {
+    let i = 0;
+    while (plainMatch(a[i], /^-[nilwEFIc]+$/)) i++;
+    const pattern = a[i];
+    if (!pattern || !(singleQuoted(pattern) || plainMatch(pattern, REF)))
+      return false;
+    let rest = a.slice(i + 1);
+    if (rest[0]?.raw === "--") rest = rest.slice(1);
+    return (
+      rest.every(
+        (w) =>
+          (w.plain || singleQuoted(w)) &&
+          /^(?::!|:\^)?[A-Za-z0-9._-][A-Za-z0-9._/-]*$/.test(w.text)
+      ) && "git grep in the session repo"
+    );
+  }
+  if (sub?.raw === "branch")
+    return (
+      (/^(?:-vv|--show-current)$/.test(r) ||
+        (a.length === 2 && a[0]?.raw === "--list" && plainMatch(a[1], REF))) &&
+      "git branch listing"
+    );
+  if (sub?.raw === "remote")
+    return (
+      a.length === 2 &&
+      a[0]?.raw === "get-url" &&
+      plainMatch(a[1], REF) &&
+      "git remote get-url"
+    );
+  return false;
+}
+
+// Only into <root>/.worktrees/<new name>, where .worktrees is a real folder (or absent).
+function gitWorktreeAdd(s: Segment, ctx: Ctx): string | false {
+  const g = gitIn(s, ctx, true);
+  if (!g || g.rest[0]?.raw !== "worktree") return false;
+  const r = g.rest
+    .slice(1)
+    .map((w) => w.raw)
+    .join(" ");
+  if (/^list(?: --porcelain)?$/.test(r)) return "git worktree list";
+  const m = new RegExp(
+    `^add \\.worktrees/(${SEG}) -b ([A-Za-z0-9._/][A-Za-z0-9._/-]*)(?: [0-9a-f]{7,40})?$`
+  ).exec(r);
+  if (!m || !g.rest.slice(1).every((w) => w.plain)) return false;
+  try {
+    const root = realpathSync(g.dir);
+    const wts = join(root, ".worktrees");
+    try {
+      if (realpathSync(wts) !== wts) return false;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") return false;
+    }
+    try {
+      lstatSync(join(wts, m[1]!));
+      return false; // target exists
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") return false;
+    }
+    return "git worktree add under .worktrees/";
+  } catch {
+    return false;
+  }
+}
+
+const GITHUB_URL = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+
+// Reads the repo's config (no hooks run). Any error refuses.
+function gitConfig(dir: string, args: string[]): string | null {
+  try {
+    return execFileSync("git", ["-C", dir, "config", ...args], {
+      encoding: "utf8",
+      timeout: 2000,
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch (e) {
+    // exit 1 = key not found
+    return (e as { status?: number }).status === 1 ? "" : null;
+  }
+}
+
+// No flags at all (shuts out --upload-pack), no +/: refspecs; the remote is a GitHub https
+// URL, or origin whose configured URL is one. Refuses when url.*.insteadOf could rewrite it.
+function gitFetch(s: Segment, ctx: Ctx): string | false {
+  const g = gitIn(s, ctx);
+  if (!g) return false;
+  const [sub, remote, ...refs] = g.rest;
+  if (!/^(?:fetch|ls-remote)$/.test(sub?.raw ?? "") || !remote?.plain)
+    return false;
+  if (!refs.every((w) => plainMatch(w, REF))) return false;
+  let url = remote.text;
+  if (url === "origin") {
+    const got = gitConfig(g.dir, ["--get", "remote.origin.url"]);
+    if (!got) return false;
+    url = got;
+  }
+  if (!GITHUB_URL.test(url)) return false;
+  const rewrites = gitConfig(g.dir, [
+    "--get-regexp",
+    "^url\\..*\\.(push)?insteadof$",
+  ]);
+  return rewrites === "" && "git fetch from GitHub over https";
+}
+
+const GH_READ =
+  /^(?:pr (?:view|diff|checks|list)|run (?:view|list)|issue (?:view|list)|release (?:view|list)|repo view)$/;
+function ghRead(s: Segment): string | false {
+  const [cmd, a, b, ...rest] = s.words;
+  if (cmd?.raw !== "gh" || !GH_READ.test(`${a?.raw} ${b?.raw}`)) return false;
+  return (
+    rest.every((w) => w.plain || singleQuoted(w) || /^"[^"]*"$/.test(w.raw)) &&
+    "read-only gh"
+  );
+}
 
 const CP_SEED = new RegExp(
   `^cp -al (?:(?:/|\\./)?(?:${SEG}/)*)?node_modules ${WORKTREE}/node_modules$`
@@ -326,8 +535,12 @@ const SEGMENT_FORMS: ((s: Segment, ctx: Ctx) => string | false)[] = [
   gitRead,
   gitAdd,
   gitCommit,
+  gitRepoRead,
+  gitWorktreeAdd,
+  gitFetch,
   cpSeed,
   ghApi,
+  ghRead,
   grepPlans,
   gitleaks,
   inspect,
@@ -382,7 +595,7 @@ function decide(command: string, ctx: Ctx): string | false {
   const cmd = command.trim();
   if (cmd.split(/[\s/]/).includes("..")) return false;
   if (cmd === SETTINGS_CHECK) return "settings.json validity check";
-  if (DEV_SERVER.test(cmd)) return "dev server start in a worktree";
+  if (DEV_SERVER.test(cmd)) return devServer(cmd, ctx);
   const segments = parse(cmd);
   if (!segments) return false;
   const reasons: string[] = [];

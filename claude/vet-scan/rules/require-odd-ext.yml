@@ -1,0 +1,21 @@
+id: require-odd-ext
+language: TypeScript
+severity: error
+message: Loads a local file with a non-code extension (Node runs unknown extensions as JavaScript)
+rule:
+  kind: string
+  any:
+    - inside:
+        kind: arguments
+        inside:
+          kind: call_expression
+          has:
+            {
+              field: function,
+              regex: '^(require|import|module\.require|require\.resolve)$',
+            }
+    - inside: { kind: import_statement }
+    - inside: { kind: export_statement }
+  regex: '^.\.{0,2}/[^''"`]*\.[A-Za-z0-9_-]+.$'
+  not:
+    regex: '(?i)\.([cm]?[jt]sx?|json|node|wasm|css|scss|sass|less|svg|png|jpe?g|gif|webp|avif|woff2?)[''"`]$'

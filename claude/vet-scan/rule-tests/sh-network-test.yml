@@ -1,0 +1,9 @@
+id: sh-network
+valid:
+  - |-
+    echo hello
+invalid:
+  - |-
+    curl https://example.com
+  - |-
+    nc 10.0.0.1 4444

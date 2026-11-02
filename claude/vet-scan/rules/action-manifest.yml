@@ -1,0 +1,14 @@
+id: action-manifest
+language: Yaml
+severity: warning
+message: Action manifest key that changes what runs, or a credential-like input
+files:
+  - "action.yml"
+  - "action.yaml"
+  - "**/action.yml"
+  - "**/action.yaml"
+rule:
+  any: [{ kind: block_mapping_pair }, { kind: flow_pair }]
+  has:
+    field: key
+    regex: '(?i)^["'']?(using|main|pre|post|pre-if|post-if|run|uses|shell|image|entrypoint|args|env|[a-z_-]*(token|secret|password|key)[a-z_-]*)["'']?$'

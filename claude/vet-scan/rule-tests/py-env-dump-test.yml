@@ -1,0 +1,10 @@
+id: py-env-dump
+valid:
+  - |-
+    v = os.environ.get('HOME')
+invalid:
+  - |-
+    send(dict(os.environ))
+  - |-
+    json.dumps(os.environ)
+  - "for k in os.environ:\n    print(k)"

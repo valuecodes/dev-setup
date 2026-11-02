@@ -1,0 +1,10 @@
+id: py-network
+language: Python
+severity: warning
+message: Network access or a URL / IPv4 address
+rule:
+  any:
+    - any: [{ kind: import_statement }, { kind: import_from_statement }]
+      regex: '\b(urllib|urllib2|urllib3|requests|httpx|aiohttp|http\.client|socket|ftplib|smtplib|telnetlib|paramiko)\b'
+    - kind: string
+      regex: '(?i)\b(https?|wss?|ftp)://|\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'

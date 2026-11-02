@@ -2,7 +2,7 @@
 description: Review the permission prompts since the last run (from the session transcripts), triage each command shape into a prefix rule / hook form / keep prompting, apply the approved ones and verify them
 argument-hint: "[--days N | --since ISO]"
 disable-model-invocation: true
-allowed-tools: Read, Edit, Write, Grep, Glob, TodoWrite, AskUserQuestion, Bash(node ~/.claude/scripts/prompted-commands.ts:*), Bash(node ~/.claude/hooks/allow-worktree-commands.test.mjs:*), Bash(ls:*)
+allowed-tools: Read, Edit, Write, Grep, Glob, TodoWrite, AskUserQuestion, Bash(node ~/.claude/scripts/prompted-commands.ts:*), Bash(node ~/.claude/hooks/allow-worktree-commands.test.ts:*), Bash(ls:*)
 ---
 
 Cut repeated permission prompts **without widening what can run unattended**. Every change is gated; nothing is added automatically. Arguments: `$ARGUMENTS`: an optional `--days N` or `--since <ISO>` overriding the last-run time.
@@ -10,7 +10,7 @@ Cut repeated permission prompts **without widening what can run unattended**. Ev
 **Files.**
 
 - Scanner: `~/.claude/scripts/prompted-commands.ts` (read-only; modes `shapes`, `list`, `decisions <regex>`; see its header).
-- Hook: `~/.claude/hooks/allow-worktree-commands.ts` (segment checker; its header lists every allowed form). Its tests: `~/.claude/hooks/allow-worktree-commands.test.mjs` (one `[command, "allow" | "prompt"]` line per case).
+- Hook: `~/.claude/hooks/allow-worktree-commands.ts` (segment checker; its header lists every allowed form). Its tests: `~/.claude/hooks/allow-worktree-commands.test.ts` (one `[command, "allow" | "prompt"]` line per case).
 - Global settings: `~/.claude/settings.json` (`permissions.allow`, `permissions.additionalDirectories`, `hooks`).
 - Last run: `~/.claude/permission-review.last` (one ISO timestamp).
 
@@ -51,7 +51,7 @@ Show one table per bucket: shape, count, example, proposed rule or hook form, re
 ## Phase 4 — Apply + verify
 
 1. **Rules:** edit `~/.claude/settings.json` with the Edit tool (keep the existing order and grouping; remove rules a new hook form replaces, and rules shown to be broken). Then validate it with exactly this command, which the hook approves: `node -e 'JSON.parse(require("fs").readFileSync(process.env.HOME+"/.claude/settings.json","utf8")); console.log("valid")'`.
-2. **Hook forms:** add the matcher to `allow-worktree-commands.ts`, list it in the header comment, and add cases to `allow-worktree-commands.test.mjs`: the real example from the scan as `allow`, and for every way the form could be abused, a `prompt` case (other flags, paths outside the intended folder, `..`, symlinks, `$()`, redirects, pipes into `sh`). Run `node ~/.claude/hooks/allow-worktree-commands.test.mjs`; every case must pass, old ones included. The editor's TypeScript errors in the hook (missing Node types) are noise; Node strips the types without checking them.
+2. **Hook forms:** add the matcher to `allow-worktree-commands.ts`, list it in the header comment, and add cases to `allow-worktree-commands.test.ts`: the real example from the scan as `allow`, and for every way the form could be abused, a `prompt` case (other flags, paths outside the intended folder, `..`, symlinks, `$()`, redirects, pipes into `sh`). Run `node ~/.claude/hooks/allow-worktree-commands.test.ts`; every case must pass, old ones included. The editor's TypeScript errors in the hook (missing Node types) are noise; Node strips the types without checking them.
 3. Write the current time (ISO) to `~/.claude/permission-review.last` with the Write tool.
 4. If an instructions file (`CLAUDE.local.md` or `~/.claude/CLAUDE.md`) lists the auto-approved forms, update it.
 

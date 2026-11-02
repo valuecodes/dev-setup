@@ -1,0 +1,21 @@
+id: dynamic-code
+valid:
+  - |-
+    setTimeout(() => run(), 10)
+  - |-
+    evaluate(x)
+invalid:
+  - |-
+    eval(code)
+  - |-
+    globalThis.eval(code)
+  - |-
+    const f = new Function('a', body)
+  - |-
+    Function('return this')()
+  - |-
+    m._compile(src, file)
+  - |-
+    require('node:vm')
+  - |-
+    setTimeout("alert(1)", 10)

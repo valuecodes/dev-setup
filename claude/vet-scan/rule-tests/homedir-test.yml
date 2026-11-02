@@ -1,0 +1,9 @@
+id: homedir
+valid:
+  - |-
+    const d = process.cwd()
+invalid:
+  - |-
+    const h = os.homedir()
+  - |-
+    const h = process.env.HOME

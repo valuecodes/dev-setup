@@ -1,0 +1,10 @@
+id: obfuscation
+language: TypeScript
+severity: error
+message: Obfuscator-style identifiers or escaped strings
+rule:
+  any:
+    - kind: identifier
+      regex: "^_0x[0-9a-fA-F]{4,}$"
+    - any: [{ kind: string }, { kind: template_string }]
+      regex: '(\\x[0-9a-fA-F]{2}){8,}'

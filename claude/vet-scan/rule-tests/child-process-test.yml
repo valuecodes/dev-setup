@@ -1,0 +1,15 @@
+id: child-process
+valid:
+  - |-
+    const x = 'child'
+  - |-
+    import fs from 'node:fs'
+invalid:
+  - |-
+    const cp = require('child_process')
+  - |-
+    import { exec } from 'node:child_process'
+  - |-
+    new (require(`worker_threads`).Worker)(f)
+  - |-
+    process.binding('spawn_sync')

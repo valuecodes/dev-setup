@@ -1,0 +1,12 @@
+id: env-copy
+language: TypeScript
+severity: warning
+message: Copies the whole environment
+rule:
+  any:
+    - kind: spread_element
+      regex: '^\.\.\.\s*process\.env$'
+    - kind: call_expression
+      all:
+        - has: { field: function, regex: '^Object\.assign$' }
+        - has: { field: arguments, has: { regex: '^process\.env$' } }

@@ -1,0 +1,17 @@
+id: require-odd-ext
+valid:
+  - |-
+    require('./a.js')
+  - |-
+    require('../package.json')
+  - |-
+    import './styles.css'
+  - |-
+    require('lodash.merge')
+invalid:
+  - |-
+    require('./data.bin')
+  - |-
+    require('../lib/payload.txt')
+  - |-
+    import x from './x.dat'

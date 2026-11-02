@@ -1,0 +1,7 @@
+id: fs-sensitive
+language: TypeScript
+severity: error
+message: Names a credential, key, browser-profile or wallet path
+rule:
+  any: [{ kind: string }, { kind: template_string }]
+  regex: '(\.npmrc|\.yarnrc|\.pypirc|\.netrc|\.ssh/|id_rsa|id_ed25519|\.aws/|\.azure/|\.config/gcloud|\.kube/config|\.docker/config|\.git-credentials|\.config/gh|/etc/passwd|/etc/shadow|\.(bash|zsh|sh|node_repl|python)_history|Keychains|Login Data|Local State|\.ethereum|\.electrum|(?i:metamask|exodus|wallet\.dat))'

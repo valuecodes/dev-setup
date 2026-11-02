@@ -2,16 +2,16 @@
 description: Ship the next unshipped PR of a multi-PR plan file against main — whole-plan Codex review once, per-PR re-plan + Codex review, then the /ship-feature build/review/PR/feedback phases — and stop until it is merged
 argument-hint: "[path/to/plan.md] [--continue]"
 disable-model-invocation: true
-allowed-tools: Read, Edit, Write, Glob, Grep, Task, TodoWrite, AskUserQuestion, Bash(git:*), Bash(gh:*), Bash(pnpm:*), Bash(node:*), Bash(ls:*), Bash(mkdir:*), Bash(sleep:*), Bash(cd:*), Bash(tail:*), Bash(head:*), Bash(grep:*), Bash(sed:*), Bash(sort:*), Bash(ssh-add:*), Bash(setsid:*), Bash(kill:*), Bash(fuser:*), Bash(ss:*), Bash(cat:*), Bash(readlink:*), Bash(cp:*)
+allowed-tools: Read, Edit, Write, Glob, Grep, Task, TodoWrite, AskUserQuestion, Bash(git:*), Bash(gh:*), Bash(pnpm:*), Bash(node:*), Bash(ls:*), Bash(mkdir:*), Bash(sleep:*), Bash(cd:*), Bash(tail:*), Bash(head:*), Bash(grep:*), Bash(sed:*), Bash(sort:*), Bash(ssh-add:*), Bash(setsid:*), Bash(kill:*), Bash(ss:*), Bash(cat:*), Bash(readlink:*), Bash(cp:*)
 ---
 
 Ship a plan that is split into several PRs (`## PR A …`, `## PR B …`, …) **one PR per run**, each PR branched from fresh `main` and merged before the next one starts. Every run: resolve the plan and a state file → reconcile with git/GitHub → (first run only) Codex-review the whole plan → re-plan the next PR and Codex-review that spec → run the `/ship-feature` build/commit/review/fix/PR/feedback phases for it → stop with a "merge, then run again" hint.
 
 **Why not stacked PRs, and why one PR per run.** This repo merges by rebase only (SHAs are rewritten on merge), feature CI runs only for PRs that target `main`, and Copilot review only fires on PRs that target `main`. A PR based on another feature branch would therefore be untested and unreviewed, and every merge would force a rebase + force-push of everything above it. Sequential PRs against `main` avoid all of that. One PR per run keeps each build inside a fresh context: the model cannot run `/compact` itself, so the design must not depend on controlling compaction. Progress lives in a state file, not in the conversation.
 
-**Housekeeping this command does that `/ship-feature` does not.** It keeps a state file for the plan (Phase 0). It removes worktrees, and their local branches, when GitHub reports the PR as merged and the tree is clean (Phase 1b). It stops polling as soon as Copilot has reviewed (Phase 5). It inherits from `/ship-feature` the rest: no VS Code windows, the dev server restart on `http://localhost:3000/` (Phase 4a) and `node_modules` seeding.
+**Housekeeping this command does that `/ship-feature` does not.** It keeps a state file for the plan (Phase 0). It removes worktrees, and their local branches, when GitHub reports the PR as merged and the tree is clean (Phase 1b). It stops polling as soon as Copilot and the Codex connector have reviewed (Phase 5). It inherits from `/ship-feature` the rest: no VS Code windows, the per-worktree dev server (Phase 4a) and `node_modules` seeding.
 
-**Relationship to `/ship-feature`.** This command does not duplicate it. Phases 4–5 below say "follow `~/.claude/commands/ship-feature.md` Phases N–M verbatim": read that file and execute those phases with the overrides listed here. Its hard rules all apply (HTTPS push via the gh token only, signing fallback with `-c commit.gpgsign=false`, never `--no-verify`, never force-push, allowlist-friendly command shapes with no `$(…)` / leading `VAR=` prefixes, never auto-remove a worktree, never delete a `feat/*` branch, local commits automatic, gates C/D/E before anything leaves the machine). If `ship-feature.md` has dropped out of context after a compaction, re-read it before continuing a phase.
+**Relationship to `/ship-feature`.** This command does not duplicate it. Phases 4–5 below say "follow `~/.claude/commands/ship-feature.md` Phases N–M verbatim": read that file and execute those phases with the overrides listed here. Its hard rules all apply (git over HTTPS via the gh token only, except the manual SSH push the user runs when the diff touches `.github/workflows/**` (ship-feature Phase 7), always unsigned commits with `-c commit.gpgsign=false`, never `--no-verify`, never force-push, allowlist-friendly command shapes with no `$(…)` / leading `VAR=` prefixes, never auto-remove a worktree, never delete a `feat/*` branch, local commits automatic, gates C/D/E before anything leaves the machine). If `ship-feature.md` has dropped out of context after a compaction, re-read it before continuing a phase.
 
 **Retro notes.** Follow ship-feature's **Retro notes** section throughout, with `<unit>` = `.plans/<plan-slug>/prs/<id>/` once the next PR is known (before that, `.plans/<plan-slug>/`).
 
@@ -43,7 +43,7 @@ Arguments: `$ARGUMENTS` — an optional plan path and an optional `--continue` f
      <feature-slug>/    standalone /ship-feature run: the unit files directly inside
      issue-<n>/         /ship-issue for an issue no plan folder maps: the unit files directly inside
      to-issue/<slug>/   /to-issue draft (issue.md, with a trailing created: #<n> line once posted)
-     dev.pid, dev.log   repo-wide dev server
+     dev/<wt>.pid, dev/<wt>.log   dev server per worktree (ship-feature Phase 4a)
      repo-info.md       /repo-info draft
    ```
 
@@ -70,11 +70,11 @@ Arguments: `$ARGUMENTS` — an optional plan path and an optional `--continue` f
 
    `status` ∈ `pending | planned | built | pushed | merged | closed`. If the file exists and names a **different** plan path than the one resolved in step 1, `AskUserQuestion` before overwriting it (`Switch state to the new plan?` / `Keep the recorded plan` / `Cancel`). If it does not exist, create it with every PR as `pending`.
 
-4. **Pre-flight.** Run `ship-feature.md` **Phase 0** verbatim (gh auth, HTTPS URL + owner/repo, non-interactive `git ls-remote`, Node vs `.nvmrc`, main-checkout WIP warning, base branch, signing fallback → `SIGN`). Its STOP conditions apply.
+4. **Pre-flight.** Run `ship-feature.md` **Phase 0** verbatim (gh auth, HTTPS URL + owner/repo, non-interactive `git ls-remote`, Node vs `.nvmrc`, main-checkout WIP warning, base branch + local `main` fast-forward, signing → `SIGN=off`). Its STOP conditions apply.
 
 ## Phase 1 — Reconcile state with git and GitHub
 
-**Fast-forward the main checkout first.** `git fetch <https-url> main`; if `git rev-parse --abbrev-ref HEAD` is `main` and `git status --porcelain` is empty, `git merge --ff-only FETCH_HEAD` (never a rewrite; if it cannot fast-forward, say so and continue). If the checkout is dirty or on another branch, skip and warn once. This keeps the "commits ahead of main" counts below and the editor view honest; the worktree base is always `FETCH_HEAD` anyway.
+**Local `main` is already current.** ship-feature Phase 0 step 6 (run in Phase 0 step 4 above) fast-forwarded it from the remote, or stopped. That keeps the "commits ahead of main" counts below and the editor view honest; the worktree base is always `FETCH_HEAD` anyway.
 
 For **every** PR in the plan (including ones not yet in the table, so the first run adopts work done by earlier `/ship-feature` runs), refresh:
 
@@ -87,7 +87,7 @@ Derive the status: PR merged → `merged`; PR open → `pushed`; PR closed and n
 
 For each `.worktrees/*` entry in `git worktree list --porcelain` (branch from its `branch refs/heads/…` line), check two things: `gh pr list --head <branch> --state merged --json number,url` returns a PR, **and** `git -C <wt> status --porcelain` is empty. Only when both hold:
 
-1. If `.plans/dev.pid` exists and `readlink /proc/<pid>/cwd` lies inside that worktree, stop the dev server first (`kill -- -<pid>`, see Phase 4a).
+1. If `.plans/dev/<wt>.pid` exists for that worktree (`<wt>` = its directory name), stop its dev server first (`kill -- -<pid>`, ignore errors, see Phase 4a), then delete the `.pid` and `.log` files.
 2. `git worktree remove <wt>`; if it refuses only because of ignored files (`node_modules`, build output), retry with `--force` — porcelain already proved the tree clean.
 3. `git branch -D <branch>` (`-D`, not `-d`: rebase merges rewrite SHAs so git cannot see the branch as merged; GitHub's `merged` state is the guard).
 
@@ -137,23 +137,23 @@ Read `~/.claude/commands/ship-feature.md` and follow its **Phases 2–7 verbatim
 - Base = `main` at the freshly fetched `FETCH_HEAD`; record `base <sha>` in the row's notes.
 - Update the state row at each milestone: `built` after the first commit, `pushed` + PR URL right after Gate C.
 - PR body: the first `### What` bullet is `Part <n>/<total> of <plan title>: <one line>`. Do not link PRs that do not exist yet.
-- On a `built`/`pushed` resume, run ship-feature **Phase 4a** only if no live server is already running from this worktree. Check that the PID in `.plans/dev.pid` is alive and that `readlink /proc/<pid>/cwd` lies inside `.worktrees/<slug>`.
+- On a `built`/`pushed` resume, run ship-feature **Phase 4a** only if no live server is already running from this worktree. Check that the PID in `.plans/dev/<slug>.pid` is alive.
 - Everything else is inherited unchanged.
 
-### Phase 4a — Restart the dev server from this worktree
+### Phase 4a — Start the dev server from this worktree
 
-Follow `ship-feature.md` **Phase 4a** as written. It stops the previous server from `.plans/dev.pid`, frees `:3000`, starts the server detached with `setsid` from `.worktrees/<slug>`, records the PID and prints the `Dev:` URL. The next PR's run replaces the server.
+Follow `ship-feature.md` **Phase 4a** as written. It resolves the app (skipping desktop apps), starts the server detached with `setsid` from `.worktrees/<slug>` on a free port, records the PID in `.plans/dev/<slug>.pid` and prints the `Dev:` URL. It never touches another worktree's server; Phase 1b stops each one when its worktree is removed.
 
 ## Phase 5 — Automated review wait + PR feedback
 
 Follow `ship-feature.md` **Phases 8–9 verbatim** (bounded polling for the Copilot review, paginated fetch, triage table, fixes + quality gates, Gate D push, Gate E replies and resolving fix-landed threads), with one override for the wait:
 
-- **Stop polling as soon as Copilot has posted.** The only automated reviewer in this repo is `copilot-pull-request-reviewer[bot]`, which posts one review (state `COMMENTED` or `APPROVED`) with its inline comments attached, usually within two to three minutes. Poll with a background `sleep 30` instead of `sleep 60`; after each wake fetch `gh api repos/<owner>/<repo>/pulls/<PR>/reviews` and stop as soon as a review by that login exists and the review-comment count has not changed since the previous wake. Keep the 10-minute cap and the "no automated review within <max>" message.
+- **Stop polling as soon as both automated reviewers have posted.** This repo has two: `copilot-pull-request-reviewer[bot]` and `chatgpt-codex-connector[bot]`. Each posts one review (state `COMMENTED` or `APPROVED`) with its inline comments attached, usually within two to five minutes. A Copilot review whose body says it was unable to review (quota limit) counts as posted, with nothing to triage. Poll with a background `sleep 30` instead of `sleep 60`; after each wake fetch `gh api repos/<owner>/<repo>/pulls/<PR>/reviews` and stop as soon as a review by each login exists and the review-comment count has not changed since the previous wake. Keep the 10-minute cap and the "no automated review within <max>" message; at the cap, proceed with whichever reviewer has posted.
 
 ## Phase 6 — Hand-off
 
 1. Update the state row (`pushed`, PR URL, last fix SHA) and `last-run`. Write the hand-off retro notes to `<unit>/retro/<session-id>.md`.
-2. Print: `State: .plans/<plan-slug>/state.md`; `Dev: http://localhost:3000/` (or that it is not running); worktrees removed in Phase 1b; the refreshed table; this PR's URL; findings (self vs Codex) and fixes applied; PR comments triaged/fixed/replied/resolved; quality-gate status; the next PR id and title; and a note that `.worktrees/<slug>` stays until its PR is merged, when the next run removes it (Phase 1b). Never remove it now, never delete the branch now.
+2. Print: `State: .plans/<plan-slug>/state.md`; `Dev: <url>` from Phase 4a (or that it is not running); worktrees removed in Phase 1b; the refreshed table; this PR's URL; findings (self vs Codex) and fixes applied; PR comments triaged/fixed/replied/resolved; quality-gate status; the next PR id and title; and a note that `.worktrees/<slug>` stays until its PR is merged, when the next run removes it (Phase 1b). Never remove it now, never delete the branch now.
 3. End with:
    ```
    Merge PR #<n>, then run /ship-plan <plan path> again (a fresh session is fine).

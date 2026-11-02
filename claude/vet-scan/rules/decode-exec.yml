@@ -1,0 +1,19 @@
+id: decode-exec
+language: TypeScript
+severity: error
+message: Runs or loads decoded data
+rule:
+  any:
+    - pattern: eval($$$)
+    - pattern: new Function($$$)
+    - pattern: Function($$$)
+    - pattern: $M._compile($$$)
+    - kind: call_expression
+      has: { field: function, regex: '^(require|import|module\.require)$' }
+  has:
+    stopBy: end
+    any:
+      - pattern: atob($$$)
+      - pattern: Buffer.from($$$)
+      - pattern: String.fromCharCode($$$)
+      - pattern: decodeURIComponent($$$)

@@ -1,0 +1,11 @@
+id: env-dump
+valid:
+  - |-
+    const a = process.env.NODE_ENV
+invalid:
+  - |-
+    send(JSON.stringify(process.env))
+  - |-
+    Object.entries(process.env).forEach(f)
+  - |-
+    for (const k in process.env) send(k)

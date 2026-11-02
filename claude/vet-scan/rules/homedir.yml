@@ -1,0 +1,12 @@
+id: homedir
+language: TypeScript
+severity: warning
+message: Reads the user's home or profile directory
+rule:
+  any:
+    - pattern: os.homedir()
+    - pattern: homedir()
+    - pattern: process.env.HOME
+    - pattern: process.env.USERPROFILE
+    - pattern: process.env.APPDATA
+    - pattern: process.env.LOCALAPPDATA

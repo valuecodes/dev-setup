@@ -1,0 +1,7 @@
+id: parse-error
+valid:
+  - |-
+    const a = 1
+invalid:
+  - |-
+    const = = (

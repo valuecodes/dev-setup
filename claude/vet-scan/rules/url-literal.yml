@@ -1,0 +1,7 @@
+id: url-literal
+language: TypeScript
+severity: warning
+message: URL or IPv4 address in a string
+rule:
+  any: [{ kind: string }, { kind: template_string }]
+  regex: '(?i)\b(https?|wss?|ftp)://|\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'
