@@ -83,10 +83,10 @@ cargo install ast-grep --locked --version =0.51.0
 
 The script calls it as `ast-grep`, never `sg`: on many Linux systems `sg` is the shadow-utils group command.
 
-Run the rule tests after changing a rule:
+Run the rule tests after changing a rule (the tests have no snapshot baselines, so skip the snapshot check):
 
 ```bash
-ast-grep test --config claude/vet-scan/sgconfig.yml
+ast-grep test --config claude/vet-scan/sgconfig.yml --skip-snapshot-tests
 ```
 
 ### Usage
